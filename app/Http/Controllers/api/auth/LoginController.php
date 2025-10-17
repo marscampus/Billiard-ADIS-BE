@@ -73,11 +73,11 @@ class LoginController extends Controller
         } else if ($user->role == 'admin') {
             $menuBase = self::$menuBase;
 
-            $menuArray = array_filter($menuBase, function ($menu) {
-                return $menu['label'] !== 'User' && $menu['label'] !== 'Konfigurasi';
-            });
+            /* $menuArray = array_filter($menuBase, function ($menu) { */
+            /*     return $menu['label'] !== 'User' && $menu['label'] !== 'Konfigurasi'; */
+            /* }); */
 
-            $menu = array_values($menuArray);
+            $menu = array_values($menuBase);
 
             $token = $user->createToken($user->name);
 
