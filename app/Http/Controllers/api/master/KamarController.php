@@ -122,9 +122,9 @@ class KamarController extends Controller
                     throw new \Exception('Invalid base64 image data');
                 }
 
-                $fileName = 'images/meja/' . Str::uuid() . '.' . $ext;
+                $fileName = 'images/meja/' . $cKodeKamar . '.' . $ext;
 
-                Storage::disk('minio')->put($fileName, $fotoData, 'public');
+                Storage::disk('minio')->put($fileName, $fotoData);
 
                 $fotoUrl = Storage::disk('minio')->url($fileName);
             }
@@ -133,7 +133,7 @@ class KamarController extends Controller
                 'kode_kamar' => $cKodeKamar,
                 'no_kamar' => $request->no_kamar,
                 'harga' => $request->harga,
-                'foto' => $fotoUrl,
+                'foto' => $fileName,
                 'fasilitas' => implode('|', $vaKey), // Gabungkan fasilitas menjadi string
                 'tipe_kamar' => $request->tipe,
                 'per_harga' => $request->per_harga,
@@ -171,7 +171,8 @@ class KamarController extends Controller
                 'no_kamar' => 'required|string',
                 'harga' => 'required|numeric|min:1',
                 'tipe' => 'required|string',
-                'fasilitas' => 'required|array'
+                'fasilitas' => 'required|array',
+                'foto' => 'nullable|string'
             ], [
                 'required' => 'Kolom :attribute harus diisi.',
                 'max' => 'Kolom :attribute tidak boleh lebih dari :max karakter.',
@@ -187,10 +188,34 @@ class KamarController extends Controller
                 ], 422);
             }
             $vaKey = $request->fasilitas; // Ambil array fasilitas langsung
+
+            $fotoUrl = null;
+            if(!empty($request->foto)){
+                $fotoData = $request->foto;
+
+                if (preg_match('/^data:image\/(\w+);base64,/', $fotoData, $type)) {
+                    $fotoData = substr($fotoData, strpos($fotoData, ',') + 1);
+                    $ext = strtolower($type[1]);
+                } else {
+                    $ext = 'jpg';
+                }
+
+                $fotoData = base64_decode($fotoData);
+                if ($fotoData === false) {
+                    throw new \Exception('Invalid base64 image data');
+                }
+
+                $fileName = 'images/meja/' . $request->no_kamar . '.' . $ext;
+
+                Storage::disk('minio')->put($fileName, $fotoData);
+
+                $fotoUrl = Storage::disk('minio')->url($fileName);
+            }
+
             $vaData = DB::table('kamar')->where('kode_kamar', '=', $request->kode_kamar)->update([
                 'no_kamar' => $request->no_kamar,
                 'harga' => $request->harga,
-                'foto' => $request->foto,
+                'foto' => $fileName,
                 'fasilitas' => implode('|', $vaKey),
                 'tipe_kamar' => $request->tipe,
                 'per_harga' => $request->per_harga,
@@ -222,6 +247,17 @@ class KamarController extends Controller
                     'message' => 'Gagal Hapus Data',
                     'datetime' => date('Y-m-d H:i:s')
                 ], 400);
+            }
+
+            if (!empty($vaData->foto)) {
+                try {
+                    if (Storage::disk('minio')->exists($vaData->foto)) {
+                        Storage::disk('minio')->delete($vaData->foto);
+                    }
+                } catch (\Throwable $e) {
+                    // Log saja jika gagal hapus file, tapi tetap lanjut hapus data
+                    \Log::warning('Gagal hapus foto dari MinIO: ' . $e->getMessage());
+                }
             }
 
             return response()->json([
@@ -279,6 +315,15 @@ class KamarController extends Controller
                 ->orderByDesc('k.id')
                 ->get()
                 ->map(function ($item) {
+                    if(!empty($item->foto)){
+                        $item->foto_url = Storage::disk('minio')->temporaryUrl(
+                            $item->foto,
+                            now()->addHours(1)
+                        );
+                    } else {
+                        $item->foto_url = null;
+                    }
+
                     // Pecahkan fasilitas menjadi array
                     $fasilitasCodes = explode('|', $item->fasilitas);
 
