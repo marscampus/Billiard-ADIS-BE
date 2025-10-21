@@ -237,7 +237,7 @@ class ReservasiController extends Controller
                     'nik' => $reservasi->nik,
                     'total_harga' => $reservasi->total_harga,
                     'dp' => $reservasi->dp,
-                    'ppn' => $config['data']['ppn'],
+                    'ppn' => isset($config['data']) ? $config['data']['ppn'] : 0,
                     'kamar' => $vaData2->map(function ($item) {
                         return [
                             'harga_kamar' => $item->harga_kamar,
@@ -259,6 +259,10 @@ class ReservasiController extends Controller
         } catch (\Throwable $th) {
             return response()->json([
                 'status' => self::$status['BAD_REQUEST'],
+                'error' => [
+                    'error' => $th->getMessage(),
+                    'line' => $th->getLine(),
+                ],
                 'message' => 'Terjadi Kesalahan Saat Proses Data',
                 'datetime' => date('Y-m-d H:i:s')
             ], 400);
