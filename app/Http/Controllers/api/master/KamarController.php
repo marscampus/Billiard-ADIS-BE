@@ -33,6 +33,15 @@ class KamarController extends Controller
                 ->orderByDesc('k.id')
                 ->get()
                 ->map(function ($item) {
+                    if (!empty($item->foto)) {
+                        $temp = $item->foto;
+                        $item->foto = Storage::disk('minio')->temporaryUrl(
+                            $temp,             // object key
+                            now()->addMinutes(10)    // valid for 10 minutes
+                        );
+                    } else {
+                        $item->foto = null;
+                    }
                     // Pecahkan fasilitas menjadi array
                     $fasilitasCodes = explode('|', $item->fasilitas);
 
@@ -106,7 +115,6 @@ class KamarController extends Controller
             $cKodeKamar = GetterSetter::getKodeKamar('R', 6);
             $vaKey = $request->fasilitas; // Ambil array fasilitas langsung
 
-            $fotoUrl = null;
             if(!empty($request->foto)){
                 $fotoData = $request->foto;
 
@@ -122,11 +130,9 @@ class KamarController extends Controller
                     throw new \Exception('Invalid base64 image data');
                 }
 
-                $fileName = 'images/meja/' . $cKodeKamar . '.' . $ext;
+                $fileName = 'images/barber/' . $cKodeKamar . '.' . $ext;
 
                 Storage::disk('minio')->put($fileName, $fotoData);
-
-                $fotoUrl = Storage::disk('minio')->url($fileName);
             }
 
             $vaData = DB::table('kamar')->insert([

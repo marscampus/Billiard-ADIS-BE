@@ -66,7 +66,7 @@ class ReservasiController extends Controller
                     if ($isDateMatchedDB) {
                         return response()->json([
                             'status' => self::$status['GAGAL'],
-                            'message' => "Maaf, kamar $kode_kamar sedang digunakan pada tanggal $dTglIn",
+                            'message' => "Maaf, Barber $kode_kamar sedang digunakan pada tanggal $dTglIn",
                             'datetime' => date('Y-m-d H:i:s')
                         ], 400);
                     }

@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\api\master\ConfigController;
 
 class DashboardController extends Controller
@@ -51,6 +52,15 @@ class DashboardController extends Controller
 
                 // Map setiap kamar
                 $kamar = $rooms->map(function ($room) use ($request) {
+                    if (!empty($room->foto_kamar)) {
+                        $room->foto_kamar = Storage::disk('minio')->temporaryUrl(
+                            $room->foto_kamar,
+                            now()->addMinutes(10)
+                        );
+                    } else {
+                        $room->foto_kamar = null;
+                    }
+
                     // Pecah string fasilitas menjadi array
                     $fasilitasKode = explode('|', $room->fasilitas);
 

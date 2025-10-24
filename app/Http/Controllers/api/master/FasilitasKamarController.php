@@ -18,7 +18,19 @@ class FasilitasKamarController extends Controller
             $vaData = DB::table('fasilitas_kamar')
                 ->select('id', 'kode', 'keterangan', 'deskripsi', 'foto')
                 ->orderByDesc('id')
-                ->get();
+                ->get()
+                ->map(function ($item) {
+                    if (!empty($item->foto)) {
+                        $temp = $item->foto;
+                        $item->foto = Storage::disk('minio')->temporaryUrl(
+                            $temp,             // object key
+                            now()->addMinutes(10)    // valid for 10 minutes
+                        );
+                    } else {
+                        $item->foto = null;
+                    }
+                    return $item;
+                });
 
             return response()->json([
                 'status' => self::$status['SUKSES'],
@@ -55,7 +67,6 @@ class FasilitasKamarController extends Controller
                 ], 422);
             }
 
-            $fotoUrl = null;
             if(!empty($request->foto)){
                 $fotoData = $request->foto;
 
@@ -71,18 +82,16 @@ class FasilitasKamarController extends Controller
                     throw new \Exception('Invalid base64 image data');
                 }
 
-                $fileName = 'images/fasilitas-meja/' . Str::uuid() . '.' . $ext;
+                $fileName = 'images/fasilitas-barber/' . $request->kode . '.' . $ext;
 
                 Storage::disk('minio')->put($fileName, $fotoData, 'public');
-
-                $fotoUrl = Storage::disk('minio')->url($fileName);
             }
 
             $vaData = DB::table('fasilitas_kamar')->insert([
                 'kode' => $request->kode,
                 'keterangan' => $request->keterangan,
                 'deskripsi' => $request->deskripsi,
-                'foto' => $fotoUrl
+                'foto' => $fileName
             ]);
 
             if (!$vaData) {
