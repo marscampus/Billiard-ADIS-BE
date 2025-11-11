@@ -107,7 +107,7 @@ class KamarController extends Controller
             $vaKey = $request->fasilitas; // Ambil array fasilitas langsung
 
             $fotoUrl = null;
-            if(!empty($request->foto)){
+            if (!empty($request->foto)) {
                 $fotoData = $request->foto;
 
                 if (preg_match('/^data:image\/(\w+);base64,/', $fotoData, $type)) {
@@ -122,11 +122,9 @@ class KamarController extends Controller
                     throw new \Exception('Invalid base64 image data');
                 }
 
-                $fileName = 'images/meja/' . $cKodeKamar . '.' . $ext;
+                $fileName =  $cKodeKamar . '.' . $ext;
 
-                Storage::disk('minio')->put($fileName, $fotoData);
-
-                $fotoUrl = Storage::disk('minio')->url($fileName);
+                Storage::disk('minio')->put('images/meja' . $fileName, $fotoData);
             }
 
             $vaData = DB::table('kamar')->insert([
@@ -190,7 +188,7 @@ class KamarController extends Controller
             $vaKey = $request->fasilitas; // Ambil array fasilitas langsung
 
             $fotoUrl = null;
-            if(!empty($request->foto)){
+            if (!empty($request->foto)) {
                 $fotoData = $request->foto;
 
                 if (preg_match('/^data:image\/(\w+);base64,/', $fotoData, $type)) {
@@ -205,11 +203,9 @@ class KamarController extends Controller
                     throw new \Exception('Invalid base64 image data');
                 }
 
-                $fileName = 'images/meja/' . $request->no_kamar . '.' . $ext;
+                $fileName =  $request->no_kamar . '.' . $ext;
 
-                Storage::disk('minio')->put($fileName, $fotoData);
-
-                $fotoUrl = Storage::disk('minio')->url($fileName);
+                Storage::disk('minio')->put('images/meja' . $fileName, $fotoData);
             }
 
             $vaData = DB::table('kamar')->where('kode_kamar', '=', $request->kode_kamar)->update([
@@ -251,8 +247,8 @@ class KamarController extends Controller
 
             if (!empty($vaData->foto)) {
                 try {
-                    if (Storage::disk('minio')->exists($vaData->foto)) {
-                        Storage::disk('minio')->delete($vaData->foto);
+                    if (Storage::disk('minio')->exists('images/meja' . $vaData->foto)) {
+                        Storage::disk('minio')->delete('images/meja' . $vaData->foto);
                     }
                 } catch (\Throwable $e) {
                     // Log saja jika gagal hapus file, tapi tetap lanjut hapus data
@@ -315,11 +311,11 @@ class KamarController extends Controller
                 ->orderByDesc('k.id')
                 ->get()
                 ->map(function ($item) {
-                    if(!empty($item->foto)){
-                        $item->foto_url = Storage::disk('minio')->temporaryUrl(
-                            $item->foto,
-                            now()->addHours(1)
-                        );
+                    if (!empty($item->foto)) {
+                        $fileKey = 'images/meja/' . $item->foto;
+                        $foto = Storage::disk('minio')->get($fileKey);
+                        $base64 = base64_encode($foto);
+                        $item->foto_url = 'data:image/jpeg;base64,' . $base64;
                     } else {
                         $item->foto_url = null;
                     }

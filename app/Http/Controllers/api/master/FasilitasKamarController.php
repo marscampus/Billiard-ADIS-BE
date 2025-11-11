@@ -20,6 +20,17 @@ class FasilitasKamarController extends Controller
                 ->orderByDesc('id')
                 ->get();
 
+            $vaData->map(function ($item) {
+                if (!empty($item->foto)) {
+                    $fileKey = 'images/fasilitas-meja/' . $item->foto;
+                    $foto = Storage::disk('minio')->get($fileKey);
+                    $base64 = base64_encode($foto);
+                    $item->foto = 'data:image/jpeg;base64,' . $base64;
+                } else {
+                    $item->foto = null;
+                }
+            });
+
             return response()->json([
                 'status' => self::$status['SUKSES'],
                 'message' => 'SUKSES',
@@ -56,7 +67,7 @@ class FasilitasKamarController extends Controller
             }
 
             $fotoUrl = null;
-            if(!empty($request->foto)){
+            if (!empty($request->foto)) {
                 $fotoData = $request->foto;
 
                 if (preg_match('/^data:image\/(\w+);base64,/', $fotoData, $type)) {
@@ -71,18 +82,16 @@ class FasilitasKamarController extends Controller
                     throw new \Exception('Invalid base64 image data');
                 }
 
-                $fileName = 'images/fasilitas-meja/' . Str::uuid() . '.' . $ext;
+                $fileName =  $request->kode . '.' . $ext;
 
-                Storage::disk('minio')->put($fileName, $fotoData, 'public');
-
-                $fotoUrl = Storage::disk('minio')->url($fileName);
+                Storage::disk('minio')->put('images/fasilitas-meja/' . $fileName, $fotoData, 'public');
             }
 
             $vaData = DB::table('fasilitas_kamar')->insert([
                 'kode' => $request->kode,
                 'keterangan' => $request->keterangan,
                 'deskripsi' => $request->deskripsi,
-                'foto' => $fotoUrl
+                'foto' => $fileName ?? null
             ]);
 
             if (!$vaData) {
@@ -125,10 +134,32 @@ class FasilitasKamarController extends Controller
                     'datetime' => date('Y-m-d H:i:s')
                 ], 422);
             }
+
+            $fotoUrl = null;
+            if (!empty($request->foto)) {
+                $fotoData = $request->foto;
+
+                if (preg_match('/^data:image\/(\w+);base64,/', $fotoData, $type)) {
+                    $fotoData = substr($fotoData, strpos($fotoData, ',') + 1);
+                    $ext = strtolower($type[1]);
+                } else {
+                    $ext = 'jpg';
+                }
+
+                $fotoData = base64_decode($fotoData);
+                if ($fotoData === false) {
+                    throw new \Exception('Invalid base64 image data');
+                }
+
+                $fileName =  $request->kode . '.' . $ext;
+
+                Storage::disk('minio')->put('images/fasilitas-meja/' . $fileName, $fotoData, 'public');
+            }
+
             $vaData = DB::table('fasilitas_kamar')->where('kode', '=', $request->kode)->update([
                 'keterangan' => $request->keterangan,
                 'deskripsi' => $request->deskripsi,
-                'foto' => $request->foto
+                'foto' => $fileName ?? null
             ]);
 
 

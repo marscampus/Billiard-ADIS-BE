@@ -78,9 +78,8 @@ class Controller extends BaseController
                     'icon' => 'pi pi-briefcase',
                     'items' => [
                         ['label' => 'Meja', 'to' => '/master/meja', 'icon' => 'pi pi-briefcase'],
-                        ['label' => 'Fasilitas', 'to' => '/master/fasilitas_kamar', 'icon' => 'pi pi-briefcase'],
-                        ['label' => 'Tipe Kamar', 'to' => '/master/tipe_kamar', 'icon' => 'pi pi-briefcase'],
-                        ['label' => 'Tipe Kamar', 'to' => '/master/tipe_kamar', 'icon' => 'pi pi-briefcase']
+                        ['label' => 'Fasilitas', 'to' => '/master/fasilitas_meja', 'icon' => 'pi pi-briefcase'],
+                        ['label' => 'Tipe Meja', 'to' => '/master/tipe_meja', 'icon' => 'pi pi-briefcase'],
                     ]
                 ],
                 [
