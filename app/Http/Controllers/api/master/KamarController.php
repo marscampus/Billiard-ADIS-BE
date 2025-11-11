@@ -33,6 +33,14 @@ class KamarController extends Controller
                 ->orderByDesc('k.id')
                 ->get()
                 ->map(function ($item) {
+                    if (!empty($item->foto)) {
+                        $fileKey = 'images/meja/' . $item->foto;
+                        $foto = Storage::disk('minio')->get($fileKey);
+                        $base64 = base64_encode($foto);
+                        $item->foto = 'data:image/jpeg;base64,' . $base64;
+                    } else {
+                        $item->foto = null;
+                    }
                     // Pecahkan fasilitas menjadi array
                     $fasilitasCodes = explode('|', $item->fasilitas);
 
@@ -124,7 +132,7 @@ class KamarController extends Controller
 
                 $fileName =  $cKodeKamar . '.' . $ext;
 
-                Storage::disk('minio')->put('images/meja' . $fileName, $fotoData);
+                Storage::disk('minio')->put('images/meja/' . $fileName, $fotoData);
             }
 
             $vaData = DB::table('kamar')->insert([
@@ -205,7 +213,7 @@ class KamarController extends Controller
 
                 $fileName =  $request->no_kamar . '.' . $ext;
 
-                Storage::disk('minio')->put('images/meja' . $fileName, $fotoData);
+                Storage::disk('minio')->put('images/meja/' . $fileName, $fotoData);
             }
 
             $vaData = DB::table('kamar')->where('kode_kamar', '=', $request->kode_kamar)->update([
@@ -297,6 +305,7 @@ class KamarController extends Controller
                     'k.no_kamar',
                     'k.tipe_kamar',
                     'k.harga',
+                    'k.foto',
                     'k.fasilitas',
                     't.keterangan as ket_tipe',
                     'r.tgl_checkin',
