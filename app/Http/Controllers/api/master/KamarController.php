@@ -33,6 +33,7 @@ class KamarController extends Controller
                 ->orderByDesc('k.id')
                 ->get()
                 ->map(function ($item) {
+                    
                     if (!empty($item->foto)) {
                         $fileKey = 'images/meja/' . $item->foto;
                         $foto = Storage::disk('minio')->get($fileKey);
