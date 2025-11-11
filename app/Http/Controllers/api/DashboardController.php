@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\api\master\ConfigController;
 
 class DashboardController extends Controller
@@ -74,6 +75,16 @@ class DashboardController extends Controller
                     ];
 
                     if (!$request->dashboard) {
+
+                        if (!empty($room->foto_kamar)) {
+                            $fileKey = 'images/meja/' . $room->foto_kamar;
+                            $foto_kamar = Storage::disk('minio')->get($fileKey);
+                            $base64 = base64_encode($foto_kamar);
+                            $room->foto_kamar = 'data:image/jpeg;base64,' . $base64;
+                        } else {
+                            $room->foto_kamar = null;
+                        }
+
                         $vaKamar['foto_kamar'] = $room->foto_kamar;
                     }
 
