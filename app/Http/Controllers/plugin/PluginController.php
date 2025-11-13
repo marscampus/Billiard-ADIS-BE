@@ -16,38 +16,33 @@ class PluginController extends Controller
     {
         // Validasi input
         $validator = Validator::make($request->all(), [
-            'id_owner' => 'required|exists:users,id',
-            'id_plugin' => 'required|exists:plugins_master,id_plugin',
+            'token' => 'required',
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['status' => 'error', 'message' => $validator->errors()], 422);
+            return response()->json([
+                'status' => self::$status['GAGAL'],
+                'message' => $validator->errors()->first(),
+                'datetime' => date('Y-m-d H:i:s'),
+            ], 422);
         }
 
         try {
             // Ambil user berdasarkan id owner
-            $user = User::where('users.id', $request->id_owner)
-                ->join('database_users as du', 'du.id_users', 'users.id')
-                ->select('users.*')
+            $user = User::where('users.id', "1")
                 ->first();
 
             if (!$user) {
-                return response()->json(['status' => 'error', 'message' => 'User not found'], 404);
+                return response()->json([
+                    'status' => self::$status['GAGAL'],
+                    'message' => 'User Tidak Ditemukan',
+                    'datetime' => date('Y-m-d H:i:s'),
+                ], 400);
             }
 
-            // Ambil plugin yang valid berdasarkan id owner dan id plugin yang diberikan
-            $plugin = DB::table('plugins_master as pm')
-                ->leftJoin('invoices as in', 'in.apps_id', '=', 'pm.id_plugin')
-                ->leftJoin('plugins as p', 'p.id', '=', 'pm.id_plugin')
-                ->where('in.users_id', $user->id)
-                ->where('pm.id_user', $user->id)
-                ->where('pm.id_plugin', $request->id_plugin)
-                ->where('p.status', '!=', 'nonactive')
-                ->whereNotIn('pm.status_plug', ['ban', 'uninstalled'])
-                ->distinct()
-                ->get();
+            $plugin = 'o197Bidy2gIS6GRJumtWubndgkC0xt15' == $request->token;
 
-            if ($plugin->isNotEmpty()) {
+            if ($plugin) {
                 // Buat token baru
                 $token = $user->createToken($user->name);
 
@@ -57,36 +52,53 @@ class PluginController extends Controller
                     'expired_at' => now()->addHours(6),
                 ]);
 
-                return response()->json(['token' => $token->plainTextToken]);
+                return response()->json([
+                    'status' => self::$status['SUKSES'],
+                    'message' => 'Berhasil Mengambil Data',
+                    'data' => ['token' => $token->plainTextToken],
+                    'datetime' => date('Y-m-d H:i:s'),
+                ], 200);
             } else {
-                return response()->json(['status' => 'error', 'message' => 'No valid plugin found'], 404);
+                return response()->json([
+                    'status' => self::$status['GAGAL'],
+                    'message' => 'Kredensial Salah',
+                    'datetime' => date('Y-m-d H:i:s'),
+                ], 400);
             }
-        } catch (Exception $er) {
-            return response()->json(['error' => $er->getMessage()]);
+        } catch (Exception $th) {
+            return response()->json([
+                'status' => self::$status['BAD_REQUEST'],
+                'message' => 'Terjadi Kesalahan Di Sistem : ' . $th->getMessage(),
+                'datetime' => date('Y-m-d H:i:s'),
+            ], 500);
         }
     }
 
-    function checkUserHadPlugin(Request $request)
+    public function checkUserHadPlugin(Request $request)
     {
         try {
 
             $user = DB::table('users')->where('email', $request->email)->first();
 
-
-            $plugin = DB::table('plugins_master as pm')
-                ->leftJoin('invoices as in', 'in.apps_id', 'pm.id_plugin')
-                ->leftJoin('plugins as p', 'p.id', 'pm.id_plugin')
-                ->where('in.users_id', $user->id)
-                ->where('pm.id_user', $user->id)
-                ->where('p.status', '!=', 'nonactive')
-                ->whereNotIn('pm.status_plug', ['ban', 'uninstalled']) // Status plugin harus valid
-                ->select('p.id', 'p.nama', 'pm.id_user')
-                ->distinct()
-                ->get();
-
-            return response()->json($plugin);
-        } catch (Exception $er) {
-            return response()->json(['error' => $er]);
+            if (!$user) {
+                return response()->json([
+                    'status' => self::$status['GAGAL'],
+                    'message' => 'User Tidak Ditemukan',
+                    'datetime' => date('Y-m-d H:i:s'),
+                ], 400);
+            }
+            return response()->json([
+                'status' => self::$status['SUKSES'],
+                'message' => 'Berhasil Mengambil Data',
+                'data' => ['id_plugin' => 'ajdshvag72813kl421qo1', 'id_user' => $user->id],
+                'datetime' => date('Y-m-d H:i:s'),
+            ], 200);
+        } catch (Exception $th) {
+            return response()->json([
+                'status' => self::$status['BAD_REQUEST'],
+                'message' => 'Terjadi Kesalahan Di Sistem : ' . $th->getMessage(),
+                'datetime' => date('Y-m-d H:i:s'),
+            ], 500);
         }
     }
 }

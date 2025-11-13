@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\api;
 
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
@@ -65,13 +66,16 @@ class DashboardController extends Controller
                             ];
                         });
 
+
+
                     $vaKamar = [
                         'no_kamar' => $room->no_kamar,
                         'kode_kamar' => $room->kode_kamar,
                         'status_kamar' => $room->status_kamar,
                         'harga_kamar' => $room->harga_kamar,
                         'fasilitas' => $fasilitas,
-                        'per_harga' => $room->per_harga
+                        'per_harga' => $room->per_harga,
+
                     ];
 
                     if (!$request->dashboard) {
@@ -100,10 +104,26 @@ class DashboardController extends Controller
 
             $vaPembayaran = DB::table('pembayaran')->select('kode as value', 'keterangan as label')->get();
 
+
+            $today = Carbon::now();
+
+            $now = Carbon::now();
+
+            $vaReservasi = DB::table('detail_reservasi as d')
+                ->leftJoin('reservasi as r', 'd.kode_reservasi', 'r.kode_reservasi')
+                ->leftJoin('kamar as k', 'd.no_kamar', 'k.kode_kamar')
+                ->select('r.nama_tamu as nama', 'd.tgl_checkin as cek_in', 'd.tgl_checkout as cek_out', 'k.no_kamar as meja')
+                ->where('r.status', '0')
+                ->where('d.tgl_checkin', '<=', $now)
+                ->where('d.tgl_checkout', '>=', $now)
+                ->get();
+
+
             return response()->json([
                 'status' => self::$status['SUKSES'],
                 'message' => 'SUKSES',
                 'data' => $result,
+                'dataReservasi' => $vaReservasi,
                 'dataPembayaran' => $vaPembayaran,
                 'ppn' => isset($config['data']) ? $config['data']['ppn'] : 0,
                 'datetime' => date('Y-m-d H:i:s'),

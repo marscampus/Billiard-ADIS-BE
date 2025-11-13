@@ -19,7 +19,7 @@ class ReservasiController extends Controller
                 'nama_tamu' => 'required|max:100',
                 'no_telepon' => 'required|max:20',
                 'total_harga' => 'required',
-                'sesi_jual' => 'required',
+                // 'sesi_jual' => 'required',
             ], [
                 'required' => 'Kolom :attribute harus diisi.',
                 'max' => 'Kolom :attribute tidak boleh lebih dari :max karakter.',
@@ -359,6 +359,92 @@ class ReservasiController extends Controller
                     'dp' => $reservasi->dp,
                     'cara_bayar' => $reservasi->cara_bayar,
                     'kode_cara_bayar' => $reservasi->kode_cara_bayar,
+                    'kamar' => $vaData2->map(function ($item) {
+                        return [
+                            'harga_kamar' => $item->harga_kamar,
+                            'kode_kamar' => $item->kode_kamar,
+                            'no_kamar' => $item->no_kamar,
+                            'cek_in' => $item->tgl_checkin,
+                            'cek_out' => $item->tgl_checkout,
+                        ];
+                    }),
+                ];
+            });
+            return response()->json([
+                'status' => self::$status['SUKSES'],
+                'message' => 'SUKSES',
+                'data' => $response,
+                'datetime' => date('Y-m-d H:i:s')
+            ], 200);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'status' => self::$status['BAD_REQUEST'],
+                'message' => 'Terjadi Kesalahan Saat Proses Data' . $th->getMessage(),
+                'datetime' => date('Y-m-d H:i:s')
+            ], 400);
+        }
+    }
+
+    public function laporanPerUser(Request $request)
+    {
+        $dTglAwal = $request->tgl_awal;
+        $dTglAkhir = $request->tgl_akhir;
+        try {
+            $vaData = DB::table('reservasi as r')
+                ->select(
+                    'r.kode_reservasi',
+                    'r.nama_tamu',
+                    'r.nik',
+                    'r.no_telepon',
+                    'r.dp',
+                    'p.keterangan as cara_bayar',
+                    'r.cara_bayar as kode_cara_bayar',
+                    'r.status'
+                )
+                ->leftJoin('pembayaran as p', 'r.cara_bayar', '=', 'p.kode')
+                ->where('r.nik', $request->nik)
+                ->where('r.no_telepon', $request->telepon)
+                ->where(function ($query) use ($dTglAwal, $dTglAkhir) {
+                    if ($dTglAwal && $dTglAkhir) {
+                        $query->where('r.tgl', '>=', $dTglAwal)
+                            ->where('r.tgl', '<=', $dTglAkhir);
+                    }
+                })
+                ->get();
+
+
+            if ($vaData->isEmpty()) {
+                return response()->json([
+                    'status' => self::$status['SUKSES'],
+                    'message' => 'SUKSES',
+                    'data' => [],
+                    'datetime' => date('Y-m-d H:i:s')
+                ], 200);
+            }
+
+            $response = $vaData->map(function ($reservasi) {
+                // Query untuk mendapatkan detail kamar terkait dengan reservasi ini
+                $vaData2 = DB::table('detail_reservasi as d')
+                    ->leftJoin('kamar as k', 'd.no_kamar', 'k.kode_kamar')
+                    ->select(
+                        'k.no_kamar',
+                        'k.kode_kamar',
+                        'd.harga_kamar',
+                        'd.tgl_checkin',
+                        'd.tgl_checkout'
+                    )
+                    ->where('d.kode_reservasi', $reservasi->kode_reservasi)
+                    ->get();
+
+                $totalHarga = $vaData2->sum('harga_kamar');
+
+                return [
+                    'kode_reservasi' => $reservasi->kode_reservasi,
+                    'nama_tamu' => $reservasi->nama_tamu,
+                    'no_telepon' => $reservasi->no_telepon,
+                    'nik' => $reservasi->nik,
+                    'total_harga' => $totalHarga,
+                    'status_transaksi' => $reservasi->status == '1' ? 'Sudah Ditransaksikan' : 'Belum Ditransaksikan',
                     'kamar' => $vaData2->map(function ($item) {
                         return [
                             'harga_kamar' => $item->harga_kamar,
