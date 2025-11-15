@@ -55,6 +55,8 @@ class Controller extends BaseController
                             "icon" => "pi pi-fw pi-list",
                             "to" => "/laporan/transaksi/kasir"
                         ],
+                        ['label' => 'Reservasi', 'to' => '/laporan/reservasi', 'icon' => 'pi pi-book'],
+                        ['label' => 'Invoice', 'to' => '/laporan/invoice', 'icon' => 'pi pi-book']
                     ]
                 ]
             ],
@@ -83,14 +85,7 @@ class Controller extends BaseController
                         ['label' => 'Tipe Meja', 'to' => '/master/tipe_meja', 'icon' => 'pi pi-briefcase'],
                     ]
                 ],
-                [
-                    'label' => 'Laporan',
-                    'icon' => 'pi pi-book',
-                    'items' => [
-                        ['label' => 'Reservasi', 'to' => '/laporan/reservasi', 'icon' => 'pi pi-book'],
-                        ['label' => 'Invoice', 'to' => '/laporan/invoice', 'icon' => 'pi pi-book']
-                    ]
-                ]
+
             ]
         ],
         // [

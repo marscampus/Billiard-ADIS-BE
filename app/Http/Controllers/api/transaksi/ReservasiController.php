@@ -348,7 +348,9 @@ class ReservasiController extends Controller
                     'r.no_telepon',
                     'r.dp',
                     'p.keterangan as cara_bayar',
-                    'r.cara_bayar as kode_cara_bayar'
+                    'r.cara_bayar as kode_cara_bayar',
+                    'r.bukti_pembayaran',
+                    'r.total_harga'
                 )
                 ->leftJoin('pembayaran as p', 'r.cara_bayar', 'p.kode')
                 ->whereBetween('r.tgl', [$dTglAwal, $dTglAkhir])
@@ -377,7 +379,14 @@ class ReservasiController extends Controller
                     ->where('d.kode_reservasi', $reservasi->kode_reservasi)
                     ->get();
 
-                $totalHarga = $vaData2->sum('harga_kamar');
+                $totalHarga = $reservasi->total_harga;
+
+                if ($reservasi->bukti_pembayaran) {
+                    $fileKey = 'images/bukti_reservasi/' . $reservasi->bukti_pembayaran;
+                    $foto = Storage::disk('minio')->get($fileKey);
+                    $base64 = base64_encode($foto);
+                    $reservasi->bukti_pembayaran = 'data:image/jpeg;base64,' . $base64;
+                }
 
                 return [
                     'kode_reservasi' => $reservasi->kode_reservasi,
@@ -388,6 +397,7 @@ class ReservasiController extends Controller
                     'dp' => $reservasi->dp,
                     'cara_bayar' => $reservasi->cara_bayar,
                     'kode_cara_bayar' => $reservasi->kode_cara_bayar,
+                    'bukti_pembayaran' => $reservasi->bukti_pembayaran,
                     'kamar' => $vaData2->map(function ($item) {
                         return [
                             'harga_kamar' => $item->harga_kamar,
@@ -430,6 +440,7 @@ class ReservasiController extends Controller
                     'r.cara_bayar as kode_cara_bayar',
                     'r.status',
                     'r.bukti_pembayaran',
+                    'r.total_harga',
                 )
                 ->leftJoin('pembayaran as p', 'r.cara_bayar', '=', 'p.kode')
                 ->where('r.nik', $request->nik)
@@ -466,7 +477,7 @@ class ReservasiController extends Controller
                     ->where('d.kode_reservasi', $reservasi->kode_reservasi)
                     ->get();
 
-                $totalHarga = $vaData2->sum('harga_kamar');
+                $totalHarga = $reservasi->total_harga;
 
                 if ($reservasi->bukti_pembayaran) {
                     $fileKey = 'images/bukti_reservasi/' . $reservasi->bukti_pembayaran;
