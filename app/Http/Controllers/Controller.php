@@ -37,7 +37,8 @@ class Controller extends BaseController
                             "label" => "Shift",
                             "icon" => "pi pi-fw pi-users",
                             "to" => "/master/shift"
-                        ]
+                        ],
+                        ['label' => 'Pembayaran', 'to' => '/master/pembayaran', 'icon' => 'pi pi-briefcase'],
                     ],
                 ],
                 [
@@ -58,18 +59,18 @@ class Controller extends BaseController
                 ]
             ],
         ],
-        [
-            'label' => 'ANTRIAN',
-            'items' => [
-                [
-                    'label' => 'Master',
-                    'icon' => 'pi pi-briefcase',
-                    'items' => [
-                        ['label' => 'Antrian Meja', 'to' => '/master/antrian_meja', 'icon' => 'pi pi-briefcase'],
-                    ]
-                ],
-            ]
-        ],
+        // [
+        //     'label' => 'ANTRIAN',
+        //     'items' => [
+        //         [
+        //             'label' => 'Master',
+        //             'icon' => 'pi pi-briefcase',
+        //             'items' => [
+        //                 ['label' => 'Antrian Meja', 'to' => '/master/antrian_meja', 'icon' => 'pi pi-briefcase'],
+        //             ]
+        //         ],
+        //     ]
+        // ],
         [
             'label' => 'MEJA',
             'items' => [
@@ -308,61 +309,61 @@ class Controller extends BaseController
         //         ],
         //     ],
         // ],
-        [
-            'label' => 'Akuntansi',
-            'items' => [
-                [
-                    'label' => 'Master',
-                    'icon' => 'pi pi-briefcase',
-                    'items' => [
-                        ['label' => 'Golongan Aktiva', 'to' => '/master/golaktiva', 'icon' => 'pi pi-briefcase'],
-                        ['label' => 'Pembayaran', 'to' => '/master/pembayaran', 'icon' => 'pi pi-briefcase'],
-                        ['label' => 'Rekening', 'to' => '/master/rekening', 'icon' => 'pi pi-briefcase'],
-                    ]
-                ],
-                [
-                    'label' => 'Jurnal Lain-Lain',
-                    'icon' => 'pi pi-wallet',
-                    'to' => '/jurnal-lain'
-                ],
-                [
-                    'label' => 'Aktiva',
-                    'icon' => 'pi pi-building',
-                    'to' => '/aktiva'
-                ],
-                [
-                    'label' => 'Transaksi Kas',
-                    'icon' => 'pi pi-wallet',
-                    'to' => '/transaksikas'
-                ],
-                [
-                    'label' => 'Laporan',
-                    'icon' => 'pi pi-book',
-                    'items' => [
-                        ['label' => 'Neraca', 'to' => '/laporan/neraca', 'icon' => 'pi pi-book'],
-                        ['label' => 'Laba Rugi', 'to' => '/laporan/laba-rugi', 'icon' => 'pi pi-book'],
-                        ['label' => 'Buku Besar', 'to' => '/laporan/laporan-bukubesar', 'icon' => 'pi pi-book'],
-                    ]
-                ],
-                [
-                    'label' => 'Posting',
-                    'icon' => 'pi pi-circle',
-                    'items' => [
-                        [
-                            'label' => 'Aktiva',
-                            'to' => '/posting/aktiva',
-                            'icon' => 'pi pi-book'
-                        ],
-                        [
-                            'label' => 'Jurnal',
-                            'to' => '/posting/jurnal',
-                            'icon' => 'pi pi-book'
-                        ],
+        // [
+        //     'label' => 'Akuntansi',
+        //     'items' => [
+        //         [
+        //             'label' => 'Master',
+        //             'icon' => 'pi pi-briefcase',
+        //             'items' => [
+        //                 ['label' => 'Golongan Aktiva', 'to' => '/master/golaktiva', 'icon' => 'pi pi-briefcase'],
+        //                 ['label' => 'Pembayaran', 'to' => '/master/pembayaran', 'icon' => 'pi pi-briefcase'],
+        //                 ['label' => 'Rekening', 'to' => '/master/rekening', 'icon' => 'pi pi-briefcase'],
+        //             ]
+        //         ],
+        //         [
+        //             'label' => 'Jurnal Lain-Lain',
+        //             'icon' => 'pi pi-wallet',
+        //             'to' => '/jurnal-lain'
+        //         ],
+        //         [
+        //             'label' => 'Aktiva',
+        //             'icon' => 'pi pi-building',
+        //             'to' => '/aktiva'
+        //         ],
+        //         [
+        //             'label' => 'Transaksi Kas',
+        //             'icon' => 'pi pi-wallet',
+        //             'to' => '/transaksikas'
+        //         ],
+        //         [
+        //             'label' => 'Laporan',
+        //             'icon' => 'pi pi-book',
+        //             'items' => [
+        //                 ['label' => 'Neraca', 'to' => '/laporan/neraca', 'icon' => 'pi pi-book'],
+        //                 ['label' => 'Laba Rugi', 'to' => '/laporan/laba-rugi', 'icon' => 'pi pi-book'],
+        //                 ['label' => 'Buku Besar', 'to' => '/laporan/laporan-bukubesar', 'icon' => 'pi pi-book'],
+        //             ]
+        //         ],
+        //         [
+        //             'label' => 'Posting',
+        //             'icon' => 'pi pi-circle',
+        //             'items' => [
+        //                 [
+        //                     'label' => 'Aktiva',
+        //                     'to' => '/posting/aktiva',
+        //                     'icon' => 'pi pi-book'
+        //                 ],
+        //                 [
+        //                     'label' => 'Jurnal',
+        //                     'to' => '/posting/jurnal',
+        //                     'icon' => 'pi pi-book'
+        //                 ],
 
-                    ]
-                ],
-            ]
-        ],
+        //             ]
+        //         ],
+        //     ]
+        // ],
         [
             'label' => 'Konfigurasi',
             'items' => [
