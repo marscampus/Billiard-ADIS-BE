@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers\api\master;
 
-use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
 class PembayaranController extends Controller
@@ -13,10 +14,17 @@ class PembayaranController extends Controller
     {
         try {
             $vaData = DB::table('pembayaran as p')
-                ->select('p.id', 'p.kode', 'p.keterangan', 'p.rekening as kode_rekening', 'r.keterangan as ket_kode_rekening')
+                ->select('p.id', 'p.kode', 'p.keterangan', 'p.rekening as kode_rekening', 'r.keterangan as ket_kode_rekening', 'p.foto')
                 ->leftJoin('rekening as r', 'r.kode', '=', 'p.rekening')
                 ->orderByDesc('id')
                 ->get();
+
+            $vaData->map(function ($item) {
+                $fileKey = 'images/carabayar/' . $item->foto;
+                $foto = Storage::disk('minio')->get($fileKey);
+                $base64 = base64_encode($foto);
+                $item->foto = 'data:image/jpeg;base64,' . $base64;
+            });
 
             return response()->json([
                 'status' => self::$status['SUKSES'],
@@ -39,7 +47,7 @@ class PembayaranController extends Controller
             $vaValidator = Validator::make($request->all(), [
                 'kode' => 'required|string|unique:pembayaran,kode|max:6',
                 'keterangan' => 'required|max:50',
-                'kode_rekening' => 'required|max:20'
+                // 'kode_rekening' => 'required|max:20'
             ], [
                 'required' => 'Kolom :attribute harus diisi.',
                 'max' => 'Kolom :attribute tidak boleh lebih dari :max karakter.',
@@ -52,11 +60,41 @@ class PembayaranController extends Controller
                     'datetime' => date('Y-m-d H:i:s')
                 ], 422);
             }
-            $vaData = DB::table('pembayaran')->insert([
+
+
+            $vaArray = [
                 'kode' => $request->kode,
                 'keterangan' => $request->keterangan,
                 'rekening' => $request->kode_rekening
-            ]);
+            ];
+
+            if (!empty($request->foto)) {
+                $fotoData = $request->foto;
+
+                if (preg_match('/^data:image\/(\w+);base64,/', $fotoData, $type)) {
+                    $fotoData = substr($fotoData, strpos($fotoData, ',') + 1);
+                    $ext = strtolower($type[1]);
+                } else {
+                    $ext = 'jpg';
+                }
+
+                $fotoData = base64_decode($fotoData);
+                if ($fotoData === false) {
+                    return response()->json([
+                        'status' => self::$status['GAGAL'],
+                        'message' => 'Gambar Tidak Valid',
+                        'datetime' => date('Y-m-d H:i:s')
+                    ], 200);
+                }
+
+                $fileName = $request->kode . '.' . $ext;
+
+                Storage::disk('minio')->put('images/carabayar/' . $fileName, $fotoData);
+
+                $vaArray['foto'] = $fileName;
+            }
+
+            $vaData = DB::table('pembayaran')->insert($vaArray);
 
             if (!$vaData) {
                 return response()->json([
@@ -86,7 +124,7 @@ class PembayaranController extends Controller
             $vaValidator = Validator::make($request->all(), [
                 'kode' => 'required|string|max:6',
                 'keterangan' => 'required|max:50',
-                'kode_rekening' => 'required|max:20'
+                // 'kode_rekening' => 'required|max:20'
             ], [
                 'required' => 'Kolom :attribute harus diisi.',
                 'max' => 'Kolom :attribute tidak boleh lebih dari :max karakter.',
@@ -99,11 +137,41 @@ class PembayaranController extends Controller
                     'datetime' => date('Y-m-d H:i:s')
                 ], 422);
             }
-            $vaData = DB::table('pembayaran')->where('kode', '=', $request->kode)->update([
+
+            $vaArray = [
                 'keterangan' => $request->keterangan,
                 'rekening' => $request->kode_rekening
-            ]);
+            ];
 
+            if (!empty($request->foto)) {
+                $fotoData = $request->foto;
+
+                if (preg_match('/^data:image\/(\w+);base64,/', $fotoData, $type)) {
+                    $fotoData = substr($fotoData, strpos($fotoData, ',') + 1);
+                    $ext = strtolower($type[1]);
+                } else {
+                    $ext = 'jpg';
+                }
+
+                $fotoData = base64_decode($fotoData);
+                if ($fotoData === false) {
+                    return response()->json([
+                        'status' => self::$status['GAGAL'],
+                        'message' => 'Gambar Tidak Valid',
+                        'datetime' => date('Y-m-d H:i:s')
+                    ], 200);
+                }
+
+                $fileName = $request->kode . '.' . $ext;
+
+                Storage::disk('minio')->put('images/carabayar/' . $fileName, $fotoData);
+
+                $vaArray['foto'] = $fileName;
+            }
+
+            $vaData = DB::table('pembayaran')
+                ->where('kode', '=', $request->kode)
+                ->update($vaArray);
 
             return response()->json([
                 'status' => self::$status['SUKSES'],

@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Helpers\GetterSetter;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use App\Http\Controllers\api\master\ConfigController;
 
@@ -87,7 +88,7 @@ class ReservasiController extends Controller
 
             // dd($vaArray);
 
-            $vaData = DB::table('reservasi')->insert([
+            $vaArrayR = [
                 'kode_reservasi' => $cKodeReservasi,
                 'nama_tamu' => $request->nama_tamu,
                 'nik' => $request->nik,
@@ -98,7 +99,35 @@ class ReservasiController extends Controller
                 'sesi_jual' => $request->sesi_jual,
                 'cara_bayar' => $request->metode_pembayaran,
                 'tgl' => Carbon::now()
-            ]);
+            ];
+
+            if (!empty($request->bukti_pembayaran)) {
+                $fotoData = $request->bukti_pembayaran;
+
+                if (preg_match('/^data:image\/(\w+);base64,/', $fotoData, $type)) {
+                    $fotoData = substr($fotoData, strpos($fotoData, ',') + 1);
+                    $ext = strtolower($type[1]);
+                } else {
+                    $ext = 'jpg';
+                }
+
+                $fotoData = base64_decode($fotoData);
+                if ($fotoData === false) {
+                    return response()->json([
+                        'status' => self::$status['GAGAL'],
+                        'message' => 'Gambar Tidak Valid',
+                        'datetime' => date('Y-m-d H:i:s')
+                    ], 200);
+                }
+
+                $fileName = $cKodeReservasi . '.' . $ext;
+
+                Storage::disk('minio')->put('images/bukti_reservasi/' . $fileName, $fotoData);
+
+                $vaArrayR['bukti_pembayaran'] = $fileName;
+            }
+
+            $vaData = DB::table('reservasi')->insert($vaArrayR);
 
             DB::table('detail_reservasi')->insert($vaArray);
 
@@ -399,7 +428,8 @@ class ReservasiController extends Controller
                     'r.dp',
                     'p.keterangan as cara_bayar',
                     'r.cara_bayar as kode_cara_bayar',
-                    'r.status'
+                    'r.status',
+                    'r.bukti_pembayaran',
                 )
                 ->leftJoin('pembayaran as p', 'r.cara_bayar', '=', 'p.kode')
                 ->where('r.nik', $request->nik)
@@ -438,11 +468,21 @@ class ReservasiController extends Controller
 
                 $totalHarga = $vaData2->sum('harga_kamar');
 
+                if ($reservasi->bukti_pembayaran) {
+                    $fileKey = 'images/bukti_reservasi/' . $reservasi->bukti_pembayaran;
+                    $foto = Storage::disk('minio')->get($fileKey);
+                    $base64 = base64_encode($foto);
+                    $reservasi->bukti_pembayaran = 'data:image/jpeg;base64,' . $base64;
+                }
+
                 return [
                     'kode_reservasi' => $reservasi->kode_reservasi,
                     'nama_tamu' => $reservasi->nama_tamu,
                     'no_telepon' => $reservasi->no_telepon,
                     'nik' => $reservasi->nik,
+                    'dp' => $reservasi->dp,
+                    'cara_bayar' => $reservasi->cara_bayar,
+                    'bukti_pembayaran' => $reservasi->bukti_pembayaran,
                     'total_harga' => $totalHarga,
                     'status_transaksi' => $reservasi->status == '1' ? 'Sudah Ditransaksikan' : 'Belum Ditransaksikan',
                     'kamar' => $vaData2->map(function ($item) {

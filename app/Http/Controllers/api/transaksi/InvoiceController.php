@@ -197,7 +197,7 @@ class InvoiceController extends Controller
                     ]);
 
                 DB::table('kamar')
-                    ->where('no_kamar', $item['kode_kamar'])
+                    ->where('kode_kamar', $item['kode_kamar'])
                     ->update(['status' => $item['status']]);
             }
 
