@@ -105,8 +105,6 @@ class DashboardController extends Controller
             $vaPembayaran = DB::table('pembayaran')->select('kode as value', 'keterangan as label')->get();
 
 
-            $today = Carbon::now();
-
             $now = Carbon::now();
 
             $vaReservasi = DB::table('detail_reservasi as d')
@@ -118,6 +116,8 @@ class DashboardController extends Controller
                 ->where('d.tgl_checkout', '>=', $now)
                 ->get();
 
+            $vaJam = DB::table('jammain')->get();
+
 
             return response()->json([
                 'status' => self::$status['SUKSES'],
@@ -125,6 +125,7 @@ class DashboardController extends Controller
                 'data' => $result,
                 'dataReservasi' => $vaReservasi,
                 'dataPembayaran' => $vaPembayaran,
+                'jam' => $vaJam,
                 'ppn' => isset($config['data']) ? $config['data']['ppn'] : 0,
                 'datetime' => date('Y-m-d H:i:s'),
             ], 200);
