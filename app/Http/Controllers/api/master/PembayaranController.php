@@ -47,7 +47,7 @@ class PembayaranController extends Controller
             $vaData = DB::table('pembayaran as p')
                 ->select('p.id', 'p.kode', 'p.keterangan', 'p.rekening as kode_rekening', 'r.keterangan as ket_kode_rekening', 'p.foto')
                 ->leftJoin('rekening as r', 'r.kode', '=', 'p.rekening')
-                ->whereIn('p.kode', ['Potong Gaji', 'CASH'])
+                // ->whereIn('p.kode', ['Potong Gaji', 'Tunai'])
                 ->orderByDesc('id')
                 ->get();
 

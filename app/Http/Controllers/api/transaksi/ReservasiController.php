@@ -124,13 +124,14 @@ class ReservasiController extends Controller
                 'tgl' => Carbon::now()
             ];
 
-            if (empty($request->bukti_pembayaran) && $request->metode_pembayaran == 'QRIS') {
-                return response()->json([
-                    'status' => self::$status['GAGAL'],
-                    'message' => 'Bukti wajib dikirimkan',
-                    'datetime' => date('Y-m-d H:i:s')
-                ], 400);
-            } else {
+            // if (empty($request->bukti_pembayaran) && $request->metode_pembayaran == 'QRIS') {
+            //     return response()->json([
+            //         'status' => self::$status['GAGAL'],
+            //         'message' => 'Bukti wajib dikirimkan',
+            //         'datetime' => date('Y-m-d H:i:s')
+            //     ], 400);
+            // } else {
+            if (!empty($request->bukti_pembayaran) && $request->metode_pembayaran == 'QRIS') {
                 $fotoData = $request->bukti_pembayaran;
 
                 if (preg_match('/^data:image\/(\w+);base64,/', $fotoData, $type)) {
