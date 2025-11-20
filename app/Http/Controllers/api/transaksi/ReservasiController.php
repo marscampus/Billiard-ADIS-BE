@@ -125,6 +125,12 @@ class ReservasiController extends Controller
                 Storage::disk('minio')->put('images/bukti_reservasi/' . $fileName, $fotoData);
 
                 $vaArrayR['bukti_pembayaran'] = $fileName;
+            } else {
+                return response()->json([
+                    'status' => self::$status['GAGAL'],
+                    'message' => 'Bukti wajib dikirimkan',
+                    'datetime' => date('Y-m-d H:i:s')
+                ], 200);
             }
 
             $vaData = DB::table('reservasi')->insert($vaArrayR);
