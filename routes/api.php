@@ -172,6 +172,7 @@ Route::middleware(['security.header'])->group(function () {
         Route::post('/reservasi/get-pdf', [ReservasiController::class, 'getDataPdfReservasi']);
         // Pembayaran
         Route::post('/pembayaran/get', [PembayaranController::class, 'data']);
+        Route::post('/pembayaran/getforbooking', [PembayaranController::class, 'dataBooking']);
         Route::post('/pembayaran/store', [PembayaranController::class, 'store']);
         Route::post('/pembayaran/update', [PembayaranController::class, 'update']);
         Route::post('/pembayaran/delete', [PembayaranController::class, 'delete']);

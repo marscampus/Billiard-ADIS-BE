@@ -51,34 +51,53 @@ class InvoiceController extends Controller
 
             $vaArray = [];
 
+            if (empty($request->input('kamar'))) {
+                return response()->json([
+                    'status' => self::$status['GAGAL'],
+                    'message' => 'Meja tidak boleh kosong',
+                    'datetime' => date('Y-m-d H:i:s')
+                ], 400);
+            }
+
             foreach ($request->input('kamar') as $item) {
                 $dTglIn = Carbon::parse($item['cek_in']);
+                $dTglOut = Carbon::parse($item['cek_out']);
                 $kode_kamar = $item['kode_kamar'];
                 $no_kamar = $item['no_kamar'];
+
 
                 // Cek apakah no_kamar ada di data hasil query
                 // dd($kamarInvoiceData[$kode_kamar]);
                 if (isset($kamarInvoiceData[$kode_kamar]) && $kamarInvoiceData[$kode_kamar]->first()->status == 1) {
                     $invoice = $kamarInvoiceData[$kode_kamar];
+                    $dTglDigunakan = '';
+
 
                     // Periksa apakah tanggal check-in bertabrakan dengan data di database
-                    $isDateMatchedDB = $invoice->contains(function ($i) use ($dTglIn) {
+                    $isDateMatchedDB = $invoice->contains(function ($i) use (&$dTglDigunakan, $dTglIn, $dTglOut) {
                         $tglCheckin = Carbon::parse($i->tgl_checkin);
                         $tglCheckout = Carbon::parse($i->tgl_checkout);
 
-                        return $dTglIn->between($tglCheckin, $tglCheckout);
+                        $tglCheckin = Carbon::parse($i->tgl_checkin);
+                        $tglCheckout = Carbon::parse($i->tgl_checkout);
+
+                        $isMatched = $dTglIn < $tglCheckout && $dTglOut > $tglCheckin;
+
+                        if ($isMatched) {
+                            $dTglDigunakan = $tglCheckin->format('Y-m-d H:i') . " - " . $tglCheckout->format('Y-m-d H:i');
+                        }
+
+                        return $isMatched;
                     });
 
                     if ($isDateMatchedDB) {
                         return response()->json([
                             'status' => self::$status['GAGAL'],
-                            'message' => "Maaf, kamar $no_kamar sedang digunakan pada tanggal $dTglIn",
+                            'message' => "Maaf, kamar $no_kamar sedang digunakan pada tanggal $dTglDigunakan",
                             'datetime' => date('Y-m-d H:i:s')
                         ], 400);
                     }
                 }
-
-
 
                 $vaArray[] = [
                     'kode_invoice' => $cKodeInvoice,
@@ -149,7 +168,6 @@ class InvoiceController extends Controller
             }
 
             GetterSetter::setKodeFaktur('INV');
-
 
             return response()->json([
                 'status' => self::$status['SUKSES'],

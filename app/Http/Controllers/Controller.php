@@ -362,24 +362,24 @@ class Controller extends BaseController
         [
             'label' => 'Konfigurasi',
             'items' => [
+                // [
+                //     'label' => 'Config Rekening',
+                //     'icon' => 'pi pi-wallet',
+                //     'items' => [
+                //         [
+                //             'label' => 'Hotel Rekening',
+                //             'to' => '/master/rekening_config/hotel',
+                //             'icon' => 'pi pi-wallet',
+                //         ],
+                //         // [
+                //         //     'label' => 'Toko Rekening',
+                //         //     'to' => '/master/rekening_config/toko',
+                //         //     'icon' => 'pi pi-wallet',
+                //         // ],
+                //     ]
+                // ],
                 [
-                    'label' => 'Config Rekening',
-                    'icon' => 'pi pi-wallet',
-                    'items' => [
-                        [
-                            'label' => 'Hotel Rekening',
-                            'to' => '/master/rekening_config/hotel',
-                            'icon' => 'pi pi-wallet',
-                        ],
-                        // [
-                        //     'label' => 'Toko Rekening',
-                        //     'to' => '/master/rekening_config/toko',
-                        //     'icon' => 'pi pi-wallet',
-                        // ],
-                    ]
-                ],
-                [
-                    'label' => 'Hotel Info',
+                    'label' => 'Perusahaan Info',
                     'to' => '/master/hotel_config',
                     'icon' => 'pi pi-building'
                 ]

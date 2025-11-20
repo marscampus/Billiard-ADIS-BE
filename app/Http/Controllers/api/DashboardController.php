@@ -68,15 +68,71 @@ class DashboardController extends Controller
 
 
 
-                    $vaKamar = [
-                        'no_kamar' => $room->no_kamar,
-                        'kode_kamar' => $room->kode_kamar,
-                        'status_kamar' => $room->status_kamar,
-                        'harga_kamar' => $room->harga_kamar,
-                        'fasilitas' => $fasilitas,
-                        'per_harga' => $room->per_harga,
 
+                    $nowHour = Carbon::now()->format('H:i');
+
+                    // Ambil semua jam yang lebih besar dari jam sekarang
+                    $allHours = DB::table('jammain')
+                        ->pluck('jam')
+                        ->filter(function ($v) use ($nowHour) {
+                            return intval(substr($v, 0, 2)) > intval(substr($nowHour, 0, 2));
+                        })
+                        ->values()
+                        ->toArray();
+
+
+                    // Ambil jam yang sudah terpakai
+                    $vaDetail = DB::table('detail_reservasi as d')
+                        ->leftJoin('reservasi as r', 'd.kode_reservasi', 'r.kode_reservasi')
+                        ->select('d.tgl_checkin as cek_in', 'd.tgl_checkout as cek_out', 'r.nama_tamu')
+                        ->where('d.no_kamar', $room->kode_kamar)
+                        ->where('r.tgl', date('Y-m-d'))
+                        ->get();
+
+                    $vaTerpakai = [];
+                    $vaTerpakaiText = [];
+
+                    foreach ($vaDetail as $d) {
+                        $in = Carbon::parse($d->cek_in)->format('H:i');
+                        $out = Carbon::parse($d->cek_out)->format('H:i');
+                        $nama = $d->nama_tamu;
+                        $vaTerpakai[] = [
+                            'start' => $in,
+                            'end'   => $out,
+                        ];
+
+
+                        $vaTerpakaiText[] = " $in - $out [ $nama ]";
+                    }
+
+
+                    // FILTER dari $allHours yg tidak bentrok
+                    $availableHours = array_filter($allHours, function ($jam) use ($vaTerpakai) {
+
+                        foreach ($vaTerpakai as $range) {
+
+                            // contoh: jam = 10:00, range = 09:00 - 12:00
+                            if ($jam >= $range['start'] && $jam < $range['end']) {
+                                return false;
+                            }
+                        }
+
+                        return true;
+                    });
+
+                    $availableHours = array_values($availableHours);
+
+                    $vaKamar = [
+                        'no_kamar'      => $room->no_kamar,
+                        'kode_kamar'    => $room->kode_kamar,
+                        'status_kamar'  => $room->status_kamar,
+                        'harga_kamar'   => $room->harga_kamar,
+                        'fasilitas'     => $fasilitas,
+                        'per_harga'     => $room->per_harga,
+                        'used' => $vaTerpakaiText,
+                        'unused' => $availableHours
                     ];
+
 
                     if (!$request->dashboard) {
 
@@ -111,9 +167,9 @@ class DashboardController extends Controller
                 ->leftJoin('reservasi as r', 'd.kode_reservasi', 'r.kode_reservasi')
                 ->leftJoin('kamar as k', 'd.no_kamar', 'k.kode_kamar')
                 ->select('r.nama_tamu as nama', 'd.tgl_checkin as cek_in', 'd.tgl_checkout as cek_out', 'k.no_kamar as meja')
-                ->where('r.status', '0')
-                ->where('d.tgl_checkin', '<=', $now)
-                ->where('d.tgl_checkout', '>=', $now)
+                // ->where('r.status', '0')
+                ->where('r.tgl', date('Y-m-d'))
+                // ->where('d.tgl_checkout', '>=', $now)
                 ->get();
 
             $vaJam = DB::table('jammain')->get();

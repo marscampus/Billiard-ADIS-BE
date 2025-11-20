@@ -41,6 +41,38 @@ class PembayaranController extends Controller
         }
     }
 
+    public function dataBooking(Request $request)
+    {
+        try {
+            $vaData = DB::table('pembayaran as p')
+                ->select('p.id', 'p.kode', 'p.keterangan', 'p.rekening as kode_rekening', 'r.keterangan as ket_kode_rekening', 'p.foto')
+                ->leftJoin('rekening as r', 'r.kode', '=', 'p.rekening')
+                ->whereIn('p.kode', ['Potong Gaji', 'CASH'])
+                ->orderByDesc('id')
+                ->get();
+
+            $vaData->map(function ($item) {
+                $fileKey = 'images/carabayar/' . $item->foto;
+                $foto = Storage::disk('minio')->get($fileKey);
+                $base64 = base64_encode($foto);
+                $item->foto = 'data:image/jpeg;base64,' . $base64;
+            });
+
+            return response()->json([
+                'status' => self::$status['SUKSES'],
+                'message' => 'SUKSES',
+                'data' => $vaData,
+                'datetime' => date('Y-m-d H:i:s')
+            ], 200);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'status' => self::$status['BAD_REQUEST'],
+                'message' => 'Terjadi Kesalahan Saat Proses Data',
+                'datetime' => date('Y-m-d H:i:s')
+            ], 400);
+        }
+    }
+
     public function store(Request $request)
     {
         try {

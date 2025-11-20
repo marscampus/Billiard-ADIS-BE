@@ -48,32 +48,55 @@ class ReservasiController extends Controller
 
             $vaArray = [];
 
+            return response()->json([
+                'status' => self::$status['GAGAL'],
+                'message' => 'Penuh',
+                'datetime' => date('Y-m-d H:i:s')
+            ], 400);
+
+            if (empty($request->input('kamar'))) {
+                return response()->json([
+                    'status' => self::$status['GAGAL'],
+                    'message' => 'Meja tidak boleh kosong',
+                    'datetime' => date('Y-m-d H:i:s')
+                ], 400);
+            }
+
             foreach ($request->input('kamar') as $item) {
                 $dTglIn = Carbon::parse($item['cek_in']);
+                $dTglOut = Carbon::parse($item['cek_out']);
                 $kode_kamar = $item['kode_kamar'];
+                $no_kamar = $item['no_kamar'];
 
                 // Validasi dengan data dari database
                 if (isset($kamarReservasiData[$kode_kamar])) {
                     $reservasi = $kamarReservasiData[$kode_kamar];
 
-                    // Periksa apakah tanggal check-in bertabrakan dengan data di database
-                    $isDateMatchedDB = $reservasi->contains(function ($r) use ($dTglIn) {
+                    $dTglDigunakan = '';
+
+                    $isDateMatchedDB = $reservasi->contains(function ($r) use (&$dTglDigunakan, $dTglIn, $dTglOut) {
+
                         $tglCheckin = Carbon::parse($r->tgl_checkin);
                         $tglCheckout = Carbon::parse($r->tgl_checkout);
 
-                        return $dTglIn->between($tglCheckin, $tglCheckout);
+                        $isMatched = $dTglIn < $tglCheckout && $dTglOut > $tglCheckin;
+
+                        if ($isMatched) {
+                            $dTglDigunakan = $tglCheckin->format('Y-m-d H:i') . " - " . $tglCheckout->format('Y-m-d H:i');
+                        }
+
+                        return $isMatched;
                     });
+
 
                     if ($isDateMatchedDB) {
                         return response()->json([
                             'status' => self::$status['GAGAL'],
-                            'message' => "Maaf, kamar $kode_kamar sedang digunakan pada tanggal $dTglIn",
+                            'message' => "Maaf, kamar $no_kamar sudah dipesan pada tanggal $dTglDigunakan",
                             'datetime' => date('Y-m-d H:i:s')
                         ], 400);
                     }
                 }
-
-
 
                 // Tambahkan data ke array setelah validasi selesai
                 $vaArray[] = [
@@ -101,7 +124,13 @@ class ReservasiController extends Controller
                 'tgl' => Carbon::now()
             ];
 
-            if (!empty($request->bukti_pembayaran)) {
+            if (empty($request->bukti_pembayaran) && $request->metode_pembayaran == 'QRIS') {
+                return response()->json([
+                    'status' => self::$status['GAGAL'],
+                    'message' => 'Bukti wajib dikirimkan',
+                    'datetime' => date('Y-m-d H:i:s')
+                ], 400);
+            } else {
                 $fotoData = $request->bukti_pembayaran;
 
                 if (preg_match('/^data:image\/(\w+);base64,/', $fotoData, $type)) {
@@ -125,12 +154,6 @@ class ReservasiController extends Controller
                 Storage::disk('minio')->put('images/bukti_reservasi/' . $fileName, $fotoData);
 
                 $vaArrayR['bukti_pembayaran'] = $fileName;
-            } else {
-                return response()->json([
-                    'status' => self::$status['GAGAL'],
-                    'message' => 'Bukti wajib dikirimkan',
-                    'datetime' => date('Y-m-d H:i:s')
-                ], 200);
             }
 
             $vaData = DB::table('reservasi')->insert($vaArrayR);
@@ -162,72 +185,7 @@ class ReservasiController extends Controller
         }
     }
 
-    public function getDataEdit1(Request $request)
-    {
-        try {
-            $vaValidator = Validator::make($request->all(), [
-                'no_kamar' => 'required|string|max:14'
-            ], [
-                'required' => 'Kolom :attribute harus diisi.',
-                'max' => 'Kolom :attribute tidak boleh lebih dari :max karakter.',
-                'unique' => 'Kode sudah ada di database.'
-            ]);
-            if ($vaValidator->fails()) {
-                return response()->json([
-                    'status' => self::$status['BAD_REQUEST'],
-                    'message' => $vaValidator->errors()->first(),
-                    'datetime' => date('Y-m-d H:i:s')
-                ], 422);
-            }
-            $cNoKamar = $request->no_kamar;
 
-            $vaData = DB::table('reservasi as r')
-                ->select(
-                    'r.id',
-                    'r.nama_tamu',
-                    'r.no_telepon',
-                    'r.no_kamar',
-                    'r.tgl_checkin',
-                    'r.tgl_checkout',
-                    'k.harga as harga_kamar'
-                )
-                ->leftJoin('kamar as k', 'k.no_kamar', '=', 'r.no_kamar')
-                ->where('r.no_kamar', '=', $cNoKamar)
-                ->orderByDesc('r.id')
-                ->first();
-            if (!$vaData) {
-                return response()->json([
-                    'status' => self::$status['GAGAL'],
-                    'message' => 'Tidak Ada Data',
-                    'datetime' => date('Y-m-d H:i:s')
-                ], 400);
-            } else {
-                // Konversi tanggal ke objek Carbon
-                $tglCheckin = Carbon::parse($vaData->tgl_checkin);
-                $tglCheckout = Carbon::parse($vaData->tgl_checkout);
-
-                // Hitung selisih hari
-                $lamaMenginap = $tglCheckout->diffInDays($tglCheckin) + 1;
-
-                // Tambahkan ke hasil
-                $vaData->lama = $lamaMenginap;
-
-                return response()->json([
-                    'status' => self::$status['SUKSES'],
-                    'message' => 'SUKSES',
-                    'data' => $vaData,
-                    'datetime' => date('Y-m-d H:i:s'),
-                ], 200);
-            }
-        } catch (\Throwable $th) {
-            return response()->json([
-                'status' => self::$status['GAGAL'] ?? 'GAGAL',
-                'message' => $th->getMessage(),
-                'data' => null,
-                'datetime' => date('Y-m-d H:i:s'),
-            ], 500);
-        }
-    }
 
     public function getDataReservasi(Request $request)
     {
