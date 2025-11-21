@@ -48,11 +48,11 @@ class ReservasiController extends Controller
 
             $vaArray = [];
 
-            return response()->json([
-                'status' => self::$status['GAGAL'],
-                'message' => 'Penuh',
-                'datetime' => date('Y-m-d H:i:s')
-            ], 400);
+            // return response()->json([
+            //     'status' => self::$status['GAGAL'],
+            //     'message' => 'Penuh',
+            //     'datetime' => date('Y-m-d H:i:s')
+            // ], 400);
 
             if (empty($request->input('kamar'))) {
                 return response()->json([
