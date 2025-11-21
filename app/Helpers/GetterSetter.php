@@ -447,7 +447,8 @@ class GetterSetter
                 $result = $query;
             } else {
                 $query = $query->first();
-                $result = $query->keterangan;
+
+                $result = $query ? $query->keterangan : '';
             }
             return $result;
         } catch (\Throwable $ex) {

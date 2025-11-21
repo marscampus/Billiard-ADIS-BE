@@ -50,10 +50,10 @@ class ReservasiController extends Controller
 
             $cBooking = GetterSetter::getDBConfig('booking');
 
-            if ($cBooking == '0') {
+            if ($cBooking != '1') {
                 return response()->json([   
                     'status' => self::$status['GAGAL'],
-                    'message' => 'Booking sedang tidak bisa digunakan',
+                    'message' => 'Mohon maaf booking via MYSISKOP Ditutup sementara',
                     'datetime' => date('Y-m-d H:i:s')
                 ], 400);
             }
