@@ -48,11 +48,15 @@ class ReservasiController extends Controller
 
             $vaArray = [];
 
-            // return response()->json([
-            //     'status' => self::$status['GAGAL'],
-            //     'message' => 'Penuh',
-            //     'datetime' => date('Y-m-d H:i:s')
-            // ], 400);
+            $cBooking = GetterSetter::getDBConfig('booking');
+
+            if ($cBooking == '0') {
+                return response()->json([   
+                    'status' => self::$status['GAGAL'],
+                    'message' => 'Booking sedang tidak bisa digunakan',
+                    'datetime' => date('Y-m-d H:i:s')
+                ], 400);
+            }
 
             if (empty($request->input('kamar'))) {
                 return response()->json([

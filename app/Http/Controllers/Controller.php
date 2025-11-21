@@ -380,7 +380,7 @@ class Controller extends BaseController
                 // ],
                 [
                     'label' => 'Perusahaan Info',
-                    'to' => '/master/hotel_config',
+                    'to' => '/master/perusahaan_config',
                     'icon' => 'pi pi-building'
                 ]
             ]
