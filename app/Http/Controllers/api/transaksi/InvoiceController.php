@@ -260,6 +260,9 @@ class InvoiceController extends Controller
         $dTglAwal = $request->tgl_awal;
         $dTglAkhir = $request->tgl_akhir;
         try {
+
+            $vaPrint = [];
+
             $vaData = DB::table('invoice as i')
                 ->select(
                     'i.kode_invoice',
@@ -307,7 +310,7 @@ class InvoiceController extends Controller
 
             $config = json_decode($response->getContent(), true);
 
-            $response = $vaData->map(function ($invoice) use (&$totLaporan, $config) {
+            $response = $vaData->map(function ($invoice) use (&$totLaporan, $config, &$vaPrint) {
                 // Query untuk mendapatkan detail kamar terkait dengan invoice ini
                 $vaData2 = DB::table('detail_invoice as d')
                     ->leftJoin('kamar as k', 'd.no_kamar', 'k.kode_kamar')
@@ -335,6 +338,22 @@ class InvoiceController extends Controller
 
                 if ($invoice->status_bayar == '0') {
                     $totLaporan++;
+                }
+
+                foreach ($vaData2 as $v) {
+                    $totalHarga = "Rp " . number_format(floatval($totalHarga), 0, ',', '.');
+
+                    $vaPrint[] = [
+                        'FAKTUR' => $invoice->kode_invoice,
+                        'TGL' => $invoice->tgl,
+                        'NAMA' => $invoice->nama_tamu,
+                        'NIP' => $invoice->nik,
+                        'TELEPON' => $invoice->no_telepon,
+                        'HARGA TOTAL' => $totalHarga,
+                        'MEJA' => $v->no_kamar,
+                        'JAM MAIN' => Carbon::parse($v->tgl_checkin)->format('H:i'),
+                        'JAM SELESAI' => Carbon::parse($v->tgl_checkout)->format('H:i')
+                    ];
                 }
 
                 return [
@@ -373,6 +392,7 @@ class InvoiceController extends Controller
                 'status' => self::$status['SUKSES'],
                 'message' => 'SUKSES',
                 'data' => $response,
+                'dataPrint' => $vaPrint,
                 'totData' => $totLaporan,
                 'datetime' => date('Y-m-d H:i:s')
             ], 200);
