@@ -36,6 +36,8 @@ class ReservasiController extends Controller
             $cKodeReservasi = GetterSetter::getKodeFaktur('RSV', 3);
             // Ambil semua data kamar dan reservasi terlebih dahulu
             $kamarReservasiData = DB::table('detail_reservasi as k')
+                ->leftJoin('reservasi as r', 'k.kode_reservasi', 'r.kode_reservasi')
+                ->where('r.status', '0')
                 ->select(
                     'k.no_kamar',
                     'k.tgl_checkin',
@@ -51,7 +53,7 @@ class ReservasiController extends Controller
             $cBooking = GetterSetter::getDBConfig('booking');
 
             if ($cBooking != '1') {
-                return response()->json([   
+                return response()->json([
                     'status' => self::$status['GAGAL'],
                     'message' => 'Mohon maaf booking via MYSISKOP Ditutup sementara',
                     'datetime' => date('Y-m-d H:i:s')
@@ -420,6 +422,7 @@ class ReservasiController extends Controller
                             ->where('r.tgl', '<=', $dTglAkhir);
                     }
                 })
+                ->orderByDesc('r.tgl')
                 ->get();
 
 
@@ -444,6 +447,7 @@ class ReservasiController extends Controller
                         'd.tgl_checkout'
                     )
                     ->where('d.kode_reservasi', $reservasi->kode_reservasi)
+                    ->orderBy('d.tgl_checkin', 'desc')
                     ->get();
 
                 $totalHarga = $reservasi->total_harga;

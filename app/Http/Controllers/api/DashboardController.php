@@ -86,7 +86,7 @@ class DashboardController extends Controller
                         ->leftJoin('reservasi as r', 'd.kode_reservasi', 'r.kode_reservasi')
                         ->select('d.tgl_checkin as cek_in', 'd.tgl_checkout as cek_out', 'r.nama_tamu')
                         ->where('d.no_kamar', $room->kode_kamar)
-                        ->where('r.tgl', date('Y-m-d'))
+                        ->where('r.status', '0')
                         ->get();
 
                     $vaTerpakai = [];
@@ -95,6 +95,7 @@ class DashboardController extends Controller
                     foreach ($vaDetail as $d) {
                         $in = Carbon::parse($d->cek_in)->format('H:i');
                         $out = Carbon::parse($d->cek_out)->format('H:i');
+                        $tgl = Carbon::parse($d->cek_in)->format('Y-m-d');
                         $nama = $d->nama_tamu;
                         $vaTerpakai[] = [
                             'start' => $in,
@@ -102,7 +103,7 @@ class DashboardController extends Controller
                         ];
 
 
-                        $vaTerpakaiText[] = " $in - $out [ $nama ]";
+                        $vaTerpakaiText[] = "$tgl | $in - $out [ $nama ]";
                     }
 
 
