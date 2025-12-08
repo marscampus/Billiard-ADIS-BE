@@ -200,6 +200,7 @@ class ReservasiController extends Controller
             $vaData = DB::table('reservasi as r')
                 ->select('r.kode_reservasi', 'r.nama_tamu', 'r.nik', 'r.no_telepon', 'r.dp', 'r.total_harga')
                 ->where('r.status', '=', '0')
+                ->orderBy('r.tgl', 'desc')
                 ->get();
 
             if ($vaData->isEmpty()) {
@@ -228,6 +229,7 @@ class ReservasiController extends Controller
                     ->leftJoin('kamar as k', 'd.no_kamar', 'k.kode_kamar')
                     ->select('k.no_kamar', 'k.kode_kamar', 'd.harga_kamar', 'd.tgl_checkin', 'd.tgl_checkout', 'd.per_harga')
                     ->where('d.kode_reservasi', $reservasi->kode_reservasi)
+                    ->orderBy('d.tgl_checkin', 'desc')
                     ->get();
 
                 return [
