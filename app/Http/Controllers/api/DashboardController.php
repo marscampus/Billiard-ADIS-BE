@@ -112,7 +112,6 @@ class DashboardController extends Controller
 
                         foreach ($vaTerpakai as $range) {
 
-                            // contoh: jam = 10:00, range = 09:00 - 12:00
                             if ($jam >= $range['start'] && $jam < $range['end']) {
                                 return false;
                             }
