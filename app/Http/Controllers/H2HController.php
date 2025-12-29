@@ -33,7 +33,7 @@ class H2HController extends Controller
         $endDate   = $request->tglAkhir;
 
         $vaPenjualan = DB::table('invoice')
-            ->select('tgl', 'kode_invoice', 'kode_reservasi', 'nik', 'nama_tamu', 'no_telepon', 'total_kamar', 'total_harga', 'cara_bayar')
+            ->select('tgl', 'kode_invoice', 'kode_reservasi', 'nik', 'nama_tamu', 'no_telepon', 'total_kamar', 'total_harga', 'cara_bayar', 'disc', 'ppn')
             ->whereDate('tgl', '>=', $startDate)
             ->whereDate('tgl', '<=', $endDate)
             ->get();
