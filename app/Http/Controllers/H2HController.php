@@ -36,6 +36,7 @@ class H2HController extends Controller
             ->select('tgl', 'kode_invoice', 'kode_reservasi', 'nik', 'nama_tamu', 'no_telepon', 'total_kamar', 'total_harga', 'cara_bayar', 'disc', 'ppn')
             ->whereDate('tgl', '>=', $startDate)
             ->whereDate('tgl', '<=', $endDate)
+            ->orderBy('tgl', 'desc')
             ->get();
 
         return response()->json([
