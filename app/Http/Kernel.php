@@ -68,6 +68,7 @@ class Kernel extends HttpKernel
         'cache.check' => \App\Http\Middleware\CheckCache::class,
         'change.database' => \App\Http\Middleware\ChangeDatabase::class,
         'check.token' => \App\Http\Middleware\TokenValid::class,
+        'check.h2htoken' => \App\Http\Middleware\H2HTokenValid::class,
         'security.header' => \App\Http\Middleware\SecureHeader::class,
         'upload.token' => \App\Http\Middleware\upload_token::class
     ];
