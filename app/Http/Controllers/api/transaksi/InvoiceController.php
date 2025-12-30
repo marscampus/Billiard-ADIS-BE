@@ -35,6 +35,19 @@ class InvoiceController extends Controller
                 ], 422);
             }
 
+            $oAnggota = DB::connection('db2')
+                ->table('registernasabah')
+                ->where('Kode', $request->nik)
+                ->first();
+
+            if (!$oAnggota &&  $request->metode_pembayaran == 'Potong Gaji') {
+                return response()->json([
+                    'status' => self::$status['BAD_REQUEST'],
+                    'message' => "Anggota tidak ditemukan silahkan gunakan kode anggota yang valid",
+                    'datetime' => date('Y-m-d H:i:s')
+                ], 422);
+            }
+
             $cKodeInvoice = GetterSetter::getKodeFaktur('INV', 3);
             $kamarInvoiceData = DB::table('detail_invoice as i')
                 ->select(

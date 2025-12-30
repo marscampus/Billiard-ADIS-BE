@@ -10,7 +10,7 @@ class Controller extends BaseController
 {
     use AuthorizesRequests, ValidatesRequests;
 
-    protected static $status = [
+    public static $status = [
         'SUKSES' => '00',
         'GAGAL' => '01',
         'PENDING' => '02',

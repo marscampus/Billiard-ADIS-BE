@@ -89,10 +89,33 @@ class DashboardController extends Controller
                         ->where('r.status', '0')
                         ->get();
 
+                    $vaDetailInvoice = DB::table('detail_invoice as d')
+                        ->leftJoin('invoice as i', 'd.kode_invoice', 'i.kode_invoice')
+                        ->leftJoin('kamar as k', 'd.no_kamar', 'k.kode_kamar')
+                        ->select('d.tgl_checkin as cek_in', 'd.tgl_checkout as cek_out', 'i.nama_tamu')
+                        ->where('d.no_kamar', $room->kode_kamar)
+                        ->where('k.status', '1')
+                        ->where('i.tgl', date('Y-m-d'))
+                        ->get();
+
                     $vaTerpakai = [];
                     $vaTerpakaiText = [];
 
                     foreach ($vaDetail as $d) {
+                        $in = Carbon::parse($d->cek_in)->format('H:i');
+                        $out = Carbon::parse($d->cek_out)->format('H:i');
+                        $tgl = Carbon::parse($d->cek_in)->format('Y-m-d');
+                        $nama = $d->nama_tamu;
+                        $vaTerpakai[] = [
+                            'start' => $in,
+                            'end'   => $out,
+                        ];
+
+
+                        $vaTerpakaiText[] = "$tgl | $in - $out [ $nama ]";
+                    }
+
+                    foreach ($vaDetailInvoice as $d) {
                         $in = Carbon::parse($d->cek_in)->format('H:i');
                         $out = Carbon::parse($d->cek_out)->format('H:i');
                         $tgl = Carbon::parse($d->cek_in)->format('Y-m-d');
@@ -163,14 +186,32 @@ class DashboardController extends Controller
 
             $now = Carbon::now();
 
-            $vaReservasi = DB::table('detail_reservasi as d')
+            $vaReservasi1 = DB::table('detail_reservasi as d')
                 ->leftJoin('reservasi as r', 'd.kode_reservasi', 'r.kode_reservasi')
                 ->leftJoin('kamar as k', 'd.no_kamar', 'k.kode_kamar')
-                ->select('r.nama_tamu as nama', 'd.tgl_checkin as cek_in', 'd.tgl_checkout as cek_out', 'k.no_kamar as meja')
-                // ->where('r.status', '0')
-                ->where('r.tgl', date('Y-m-d'))
-                // ->where('d.tgl_checkout', '>=', $now)
+                ->select(
+                    'r.nama_tamu as nama',
+                    'd.tgl_checkin as cek_in',
+                    'd.tgl_checkout as cek_out',
+                    'k.no_kamar as meja'
+                )
+                ->where('r.tgl', date('Y-m-d'));
+
+            $vaReservasi2 = DB::table('detail_invoice as d')
+                ->leftJoin('invoice as i', 'd.kode_invoice', 'i.kode_invoice')
+                ->leftJoin('kamar as k', 'd.no_kamar', 'k.kode_kamar')
+                ->select(
+                    'i.nama_tamu as nama',
+                    'd.tgl_checkin as cek_in',
+                    'd.tgl_checkout as cek_out',
+                    'k.no_kamar as meja'
+                )
+                ->where('i.tgl', date('Y-m-d'));
+
+            $vaReservasi = $vaReservasi1
+                ->union($vaReservasi2) 
                 ->get();
+
 
             $vaJam = DB::table('jammain')->get();
 

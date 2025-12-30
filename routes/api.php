@@ -64,6 +64,7 @@ use App\Http\Controllers\api\laporan\laporantransaksistock\InventoriController;
 use App\Http\Controllers\api\laporan\laporanpenjualan\PenjualanPerBarangController;
 use App\Http\Controllers\api\laporan\laporanstock\LapPerubahanHargaStockController;
 use App\Http\Controllers\api\laporan\laporantransaksistock\NilaiPersediaanController;
+use App\Http\Controllers\api\master\AnggotaController;
 use App\Http\Controllers\H2HController;
 
 /*
@@ -460,6 +461,9 @@ Route::middleware(['security.header'])->group(function () {
         // LAPORAN BUKU BESAR
         Route::post('buku-besar/get-total', [BukuBesarController::class, 'dataTotal']);
         Route::post('buku-besar/get-detail', [BukuBesarController::class, 'dataDetail']);
+
+        //anggota
+        Route::post('anggota/get', [AnggotaController::class, 'data']);
     });
 
     Route::middleware('check.h2htoken')->group(function () {

@@ -33,6 +33,20 @@ class ReservasiController extends Controller
                     'datetime' => date('Y-m-d H:i:s')
                 ], 422);
             }
+
+            $oAnggota = DB::connection('db2')
+                ->table('registernasabah')
+                ->where('Kode', $request->nik)
+                ->first();
+
+            if (!$oAnggota) {
+                return response()->json([
+                    'status' => self::$status['BAD_REQUEST'],
+                    'message' => "Anggota tidak ditemukan silahkan gunakan kode anggota yang valid",
+                    'datetime' => date('Y-m-d H:i:s')
+                ], 422);
+            }
+
             $cKodeReservasi = GetterSetter::getKodeFaktur('RSV', 3);
             // Ambil semua data kamar dan reservasi terlebih dahulu
             $kamarReservasiData = DB::table('detail_reservasi as k')
