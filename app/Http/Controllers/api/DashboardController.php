@@ -94,9 +94,9 @@ class DashboardController extends Controller
                         ->leftJoin('kamar as k', 'd.no_kamar', 'k.kode_kamar')
                         ->select('d.tgl_checkin as cek_in', 'd.tgl_checkout as cek_out', 'i.nama_tamu')
                         ->where('d.no_kamar', $room->kode_kamar)
-                        ->where('k.status', '1')
                         ->where('i.tgl', date('Y-m-d'))
                         ->get();
+
 
                     $vaTerpakai = [];
                     $vaTerpakaiText = [];
@@ -106,10 +106,13 @@ class DashboardController extends Controller
                         $out = Carbon::parse($d->cek_out)->format('H:i');
                         $tgl = Carbon::parse($d->cek_in)->format('Y-m-d');
                         $nama = $d->nama_tamu;
-                        $vaTerpakai[] = [
-                            'start' => $in,
-                            'end'   => $out,
-                        ];
+
+                        if ($tgl == date('Y-m-d')) {
+                            $vaTerpakai[] = [
+                                'start' => $in,
+                                'end'   => $out,
+                            ];
+                        }
 
 
                         $vaTerpakaiText[] = "$tgl | $in - $out [ $nama ]";
@@ -120,10 +123,12 @@ class DashboardController extends Controller
                         $out = Carbon::parse($d->cek_out)->format('H:i');
                         $tgl = Carbon::parse($d->cek_in)->format('Y-m-d');
                         $nama = $d->nama_tamu;
-                        $vaTerpakai[] = [
-                            'start' => $in,
-                            'end'   => $out,
-                        ];
+                        if ($tgl == date('Y-m-d')) {
+                            $vaTerpakai[] = [
+                                'start' => $in,
+                                'end'   => $out,
+                            ];
+                        }
 
 
                         $vaTerpakaiText[] = "$tgl | $in - $out [ $nama ]";
@@ -135,13 +140,14 @@ class DashboardController extends Controller
 
                         foreach ($vaTerpakai as $range) {
 
-                            if ($jam >= $range['start'] && $jam < $range['end']) {
+                            if ($jam > $range['start'] && $jam < $range['end']) {
                                 return false;
                             }
                         }
 
                         return true;
                     });
+
 
                     $availableHours = array_values($availableHours);
 
@@ -209,7 +215,7 @@ class DashboardController extends Controller
                 ->where('i.tgl', date('Y-m-d'));
 
             $vaReservasi = $vaReservasi1
-                ->union($vaReservasi2) 
+                ->union($vaReservasi2)
                 ->get();
 
 
