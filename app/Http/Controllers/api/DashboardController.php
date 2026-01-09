@@ -51,6 +51,9 @@ class DashboardController extends Controller
                 // Hitung jumlah kamar tersedia berdasarkan status == 0
                 $tersedia = $rooms->where('status_kamar', 0)->count();
 
+
+
+
                 // Map setiap kamar
                 $kamar = $rooms->map(function ($room) use ($request) {
                     // Pecah string fasilitas menjadi array
@@ -67,6 +70,18 @@ class DashboardController extends Controller
                         });
 
 
+                    $oKamarNow = [];
+                    $dKamarTgl = Carbon::now()->format('Y-m-d');
+
+
+                    // if ($request->tanggalKamar && count($request->tanggalKamar) > 0) {
+                    //     $oKamarNow = collect($request->tanggalKamar)->first(function ($item) use ($room) {
+                    //         return $item['kode_kamar'] == $room->kode_kamar;
+                    //     });
+                    //     if ($oKamarNow) {
+                    //         $dKamarTgl = Carbon::parse($oKamarNow['tanggal'])->format('Y-m-d');
+                    //     }
+                    // }
 
 
                     $nowHour = Carbon::now()->format('H:i');
@@ -74,8 +89,12 @@ class DashboardController extends Controller
                     // Ambil semua jam yang lebih besar dari jam sekarang
                     $allHours = DB::table('jammain')
                         ->pluck('jam')
-                        ->filter(function ($v) use ($nowHour) {
-                            return intval(substr($v, 0, 2)) > intval(substr($nowHour, 0, 2));
+                        ->filter(function ($v) use ($dKamarTgl, $nowHour) {
+                            if ($dKamarTgl != Carbon::now()->format('Y-m-d')) {
+                                return true;
+                            } else {
+                                return intval(substr($v, 0, 2)) > intval(substr($nowHour, 0, 2));
+                            }
                         })
                         ->values()
                         ->toArray();
@@ -94,7 +113,7 @@ class DashboardController extends Controller
                         ->leftJoin('kamar as k', 'd.no_kamar', 'k.kode_kamar')
                         ->select('d.tgl_checkin as cek_in', 'd.tgl_checkout as cek_out', 'i.nama_tamu')
                         ->where('d.no_kamar', $room->kode_kamar)
-                        ->where('i.tgl', date('Y-m-d'))
+                        ->where('i.tgl', $dKamarTgl)
                         ->get();
 
 
@@ -107,7 +126,7 @@ class DashboardController extends Controller
                         $tgl = Carbon::parse($d->cek_in)->format('Y-m-d');
                         $nama = $d->nama_tamu;
 
-                        if ($tgl == date('Y-m-d')) {
+                        if ($tgl == $dKamarTgl) {
                             $vaTerpakai[] = [
                                 'start' => $in,
                                 'end'   => $out,
@@ -123,7 +142,7 @@ class DashboardController extends Controller
                         $out = Carbon::parse($d->cek_out)->format('H:i');
                         $tgl = Carbon::parse($d->cek_in)->format('Y-m-d');
                         $nama = $d->nama_tamu;
-                        if ($tgl == date('Y-m-d')) {
+                        if ($tgl == $dKamarTgl) {
                             $vaTerpakai[] = [
                                 'start' => $in,
                                 'end'   => $out,
@@ -233,7 +252,8 @@ class DashboardController extends Controller
                     'd.tgl_checkout as cek_out',
                     'k.no_kamar as meja'
                 )
-                ->where('r.tgl', date('Y-m-d'));
+                // ->where('r.tgl', $dKamarTgl)
+                ->where('r.status', '0');
 
             $vaReservasi2 = DB::table('detail_invoice as d')
                 ->leftJoin('invoice as i', 'd.kode_invoice', 'i.kode_invoice')
