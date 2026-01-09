@@ -138,15 +138,47 @@ class DashboardController extends Controller
                     // FILTER dari $allHours yg tidak bentrok
                     $availableHours = array_filter($allHours, function ($jam) use ($vaTerpakai) {
 
+                        // foreach ($vaTerpakai as $range) {
+
+                        //     if ($jam >= $range['start'] && $jam < $range['end']) {
+                        //         return false;
+                        //     }
+                        // }
+
+                        $slotStart = Carbon::createFromFormat('H:i', $jam);
+                        $slotEnd   = $slotStart->copy()->addHour();
+
                         foreach ($vaTerpakai as $range) {
 
-                            if ($jam > $range['start'] && $jam < $range['end']) {
+                            $bookingStart = Carbon::createFromFormat('H:i', $range['start']);
+                            $bookingEnd   = Carbon::createFromFormat('H:i', $range['end']);
+
+                            if (
+                                $slotStart->lt($bookingEnd) &&
+                                $slotEnd->gt($bookingStart)
+                            ) {
                                 return false;
                             }
                         }
 
                         return true;
                     });
+
+                    $ranges = [];
+
+                    $closeHour = end($allHours);
+
+                    foreach ($availableHours as $jam) {
+                        $start = Carbon::createFromFormat('H:i', $jam);
+                        if ($jam == $closeHour) {
+                            break;
+                        }
+
+                        $end   = $start->copy()->addHour();
+
+                        $ranges[] = $start->format('H:i') . '-' . $end->format('H:i');
+                    }
+
 
 
                     $availableHours = array_values($availableHours);
@@ -159,7 +191,7 @@ class DashboardController extends Controller
                         'fasilitas'     => $fasilitas,
                         'per_harga'     => $room->per_harga,
                         'used' => $vaTerpakaiText,
-                        'unused' => $availableHours
+                        'unused' => $ranges
                     ];
 
 

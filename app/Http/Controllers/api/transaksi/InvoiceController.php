@@ -204,7 +204,7 @@ class InvoiceController extends Controller
                 'nama_tamu' => 'required|max:100',
                 'no_telepon' => 'required|max:20',
                 'total_harga' => 'required',
-                'sesi_jual' => 'required'
+                'sesi_jual' => 'required',
             ], [
                 'required' => 'Kolom :attribute harus diisi.',
                 'max' => 'Kolom :attribute tidak boleh lebih dari :max karakter.',
@@ -628,7 +628,7 @@ class InvoiceController extends Controller
 
             DB::table('detail_invoice')->where('kode_invoice', $request->kode)->delete();
 
-            if ($vaData === 0) {
+            if ($vaData == 0) {
                 return response()->json([
                     'status' => self::$status['GAGAL'],
                     'message' => 'Gagal Hapus Data',
