@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use App\Helpers\GetterSetter;
 use Illuminate\Support\Facades\DB;
+use App\Exceptions\DBTransException;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
@@ -15,6 +16,8 @@ class InvoiceController extends Controller
 {
     public function store(Request $request)
     {
+
+        DB::beginTransaction();
         try {
             $vaValidator = Validator::make($request->all(), [
                 'nama_tamu' => 'required|max:100',
@@ -37,6 +40,7 @@ class InvoiceController extends Controller
 
             $oAnggota = DB::connection('db2')
                 ->table('registernasabah')
+                ->where('StatusAktif', 'A')
                 ->where('Kode', $request->nik)
                 ->first();
 
@@ -48,19 +52,11 @@ class InvoiceController extends Controller
                 ], 422);
             }
 
+
+
             $cKodeInvoice = GetterSetter::getKodeFaktur('INV', 3);
-            $kamarInvoiceData = DB::table('detail_invoice as i')
-                ->select(
-                    'i.no_kamar',
-                    'i.tgl_checkin',
-                    'i.tgl_checkout',
-                    'k.status',
-                    'k.per_harga'
-                )
-                ->leftJoin('kamar as k', 'i.no_kamar', 'k.kode_kamar')
-                ->orderByDesc('i.id')
-                ->get()
-                ->groupBy('no_kamar');
+
+
 
             $vaArray = [];
 
@@ -72,44 +68,29 @@ class InvoiceController extends Controller
                 ], 400);
             }
 
-            foreach ($request->input('kamar') as $item) {
-                $dTglIn = Carbon::parse($item['cek_in']);
+            $kodeKamars = collect($request->kamar)->pluck('kode_kamar');
+
+            DB::table('kamar')
+                ->whereIn('kode_kamar', $kodeKamars)
+                ->lockForUpdate()
+                ->get();
+
+
+            foreach ($request->kamar as $item) {
+                $dTglIn  = Carbon::parse($item['cek_in']);
                 $dTglOut = Carbon::parse($item['cek_out']);
-                $kode_kamar = $item['kode_kamar'];
-                $no_kamar = $item['no_kamar'];
 
+                $bentrok = DB::table('detail_invoice')
+                    ->where('no_kamar', $item['kode_kamar'])
+                    ->where(function ($q) use ($dTglIn, $dTglOut) {
+                        $q->where('tgl_checkin', '<', $dTglOut)
+                            ->where('tgl_checkout', '>', $dTglIn);
+                    })
+                    ->lockForUpdate()
+                    ->exists();
 
-                // Cek apakah no_kamar ada di data hasil query
-                // dd($kamarInvoiceData[$kode_kamar]);
-                if (isset($kamarInvoiceData[$kode_kamar]) && $kamarInvoiceData[$kode_kamar]->first()->status == 1) {
-                    $invoice = $kamarInvoiceData[$kode_kamar];
-                    $dTglDigunakan = '';
-
-
-                    // Periksa apakah tanggal check-in bertabrakan dengan data di database
-                    $isDateMatchedDB = $invoice->contains(function ($i) use (&$dTglDigunakan, $dTglIn, $dTglOut) {
-                        $tglCheckin = Carbon::parse($i->tgl_checkin);
-                        $tglCheckout = Carbon::parse($i->tgl_checkout);
-
-                        $tglCheckin = Carbon::parse($i->tgl_checkin);
-                        $tglCheckout = Carbon::parse($i->tgl_checkout);
-
-                        $isMatched = $dTglIn < $tglCheckout && $dTglOut > $tglCheckin;
-
-                        if ($isMatched) {
-                            $dTglDigunakan = $tglCheckin->format('Y-m-d H:i') . " - " . $tglCheckout->format('Y-m-d H:i');
-                        }
-
-                        return $isMatched;
-                    });
-
-                    if ($isDateMatchedDB) {
-                        return response()->json([
-                            'status' => self::$status['GAGAL'],
-                            'message' => "Maaf, kamar $no_kamar sedang digunakan pada tanggal $dTglDigunakan",
-                            'datetime' => date('Y-m-d H:i:s')
-                        ], 400);
-                    }
+                if ($bentrok) {
+                    throw new \Exception("Data terkirim terlalu cepat, silahkan coba lagi.");
                 }
 
                 $vaArray[] = [
@@ -123,14 +104,11 @@ class InvoiceController extends Controller
             }
 
 
+
             $vaInsert =  DB::table('detail_invoice')->insert($vaArray);
 
             if (!$vaInsert) {
-                return response()->json([
-                    'status' => self::$status['GAGAL'],
-                    'message' => 'Gagal Create Data',
-                    'datetime' => date('Y-m-d H:i:s')
-                ], 400);
+                throw new \Exception("Gagal create data, silahkan coba lagi.");
             }
 
             $vaData = DB::table('invoice')->insert([
@@ -155,11 +133,7 @@ class InvoiceController extends Controller
             ]);
 
             if (!$vaData) {
-                return response()->json([
-                    'status' => self::$status['GAGAL'],
-                    'message' => 'Gagal Create Data',
-                    'datetime' => date('Y-m-d H:i:s')
-                ], 400);
+                throw new \Exception("Gagal create data, silahkan coba lagi.");
             }
 
 
@@ -182,16 +156,30 @@ class InvoiceController extends Controller
 
             GetterSetter::setKodeFaktur('INV');
 
+            DB::commit();
+
             return response()->json([
                 'status' => self::$status['SUKSES'],
                 'message' => 'Berhasil Create Data',
                 'kode_invoice' => $cKodeInvoice,
                 'datetime' => date('Y-m-d H:i:s')
             ], 200);
-        } catch (\Throwable $th) {
+        } catch (DBTransException $th) {
+
+            DB::rollBack();
+
             return response()->json([
                 'status' => self::$status['BAD_REQUEST'],
-                'message' => 'Terjadi Kesalahan Saat Proses Data' . $th->getMessage(),
+                'message' => $th->getMessage(),
+                'datetime' => date('Y-m-d H:i:s')
+            ], 400);
+        } catch (\Throwable $th) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'status' => self::$status['BAD_REQUEST'],
+                'message' => 'Terjadi Kesalahan Saat Proses Data',
                 'datetime' => date('Y-m-d H:i:s')
             ], 400);
         }
@@ -615,37 +603,61 @@ class InvoiceController extends Controller
 
     public function delete(Request $request)
     {
+        DB::beginTransaction();
+
         try {
-            DB::table('invoice')->where('kode_invoice', $request->kode)->delete();
+            $invoice = DB::table('invoice')->where('kode_invoice', $request->kode)->first();
 
-            $vaData = DB::table('detail_invoice')->where('kode_invoice', $request->kode)->get();
-
-            foreach ($vaData as $val) {
-                DB::table('kamar')->where('kode_kamar', $val->no_kamar)->update([
-                    'status' => '0'
-                ]);
-            }
-
-            DB::table('detail_invoice')->where('kode_invoice', $request->kode)->delete();
-
-            if ($vaData == 0) {
+            if (!$invoice) {
                 return response()->json([
                     'status' => self::$status['GAGAL'],
-                    'message' => 'Gagal Hapus Data',
-                    'datetime' => date('Y-m-d H:i:s')
+                    'message' => 'Data Tidak Ditemukan',
+                    'datetime' => now()
                 ], 400);
             }
+
+            $detailInvoice = DB::table('detail_invoice')
+                ->where('kode_invoice', $request->kode)
+                ->get();
+
+            if ($detailInvoice->isEmpty()) {
+                return response()->json([
+                    'status' => self::$status['GAGAL'],
+                    'message' => 'Tidak Ada Detail Invoice',
+                    'datetime' => now()
+                ], 400);
+            }
+
+            DB::table('invoice_del_log')->insert(array_merge((array) $invoice, [
+                'deleted_at' => now()
+            ]));
+
+            DB::table('detail_invoice_del_log')->insert(
+                $detailInvoice->map(fn($item) => array_merge((array)$item, [
+                    'deleted_at' => now()
+                ]))->toArray()
+            );
+
+
+            $kodeKamar = $detailInvoice->pluck('no_kamar')->toArray();
+            DB::table('kamar')->whereIn('kode_kamar', $kodeKamar)->update(['status' => '0']);
+
+            DB::table('detail_invoice')->where('kode_invoice', $request->kode)->delete();
+            DB::table('invoice')->where('kode_invoice', $request->kode)->delete();
+
+            DB::commit();
 
             return response()->json([
                 'status' => self::$status['SUKSES'],
                 'message' => 'Berhasil Hapus Data',
-                'datetime' => date('Y-m-d H:i:s')
+                'datetime' => now()
             ], 200);
         } catch (\Throwable $th) {
+            DB::rollBack();
             return response()->json([
                 'status' => self::$status['BAD_REQUEST'],
-                'message' => 'Terjadi Kesalahan Saat Proses Data' . $th->getMessage(),
-                'datetime' => date('Y-m-d H:i:s')
+                'message' => 'Terjadi Kesalahan Saat Proses Data: ' . $th->getMessage(),
+                'datetime' => now()
             ], 400);
         }
     }

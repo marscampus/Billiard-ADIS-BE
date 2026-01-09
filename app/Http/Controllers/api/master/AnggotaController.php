@@ -25,6 +25,7 @@ class AnggotaController extends Controller
             // Start query
             $query = DB::connection('db2')
                 ->table('registernasabah')
+                ->where('StatusAktif', 'A')
                 ->select('kode', 'nama', 'telepon');
 
             // Apply search filter if search value exists

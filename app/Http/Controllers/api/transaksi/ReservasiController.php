@@ -37,6 +37,7 @@ class ReservasiController extends Controller
             $oAnggota = DB::connection('db2')
                 ->table('registernasabah')
                 ->where('Kode', $request->nik)
+                ->where('StatusAktif', 'A')
                 ->first();
 
             if (!$oAnggota) {
@@ -613,30 +614,88 @@ class ReservasiController extends Controller
         }
     }
 
+    // public function delete(Request $request)
+    // {
+    //     try {
+    //         $vaData = DB::table('reservasi')->where('kode_reservasi', $request->kode)->delete();
+    //         $vaData = DB::table('detail_reservasi')->where('kode_reservasi', $request->kode)->delete();
+
+    //         if ($vaData === 0) {
+    //             return response()->json([
+    //                 'status' => self::$status['GAGAL'],
+    //                 'message' => 'Gagal Hapus Data',
+    //                 'datetime' => date('Y-m-d H:i:s')
+    //             ], 400);
+    //         }
+
+    //         return response()->json([
+    //             'status' => self::$status['SUKSES'],
+    //             'message' => 'Berhasil Hapus Data',
+    //             'datetime' => date('Y-m-d H:i:s')
+    //         ], 200);
+    //     } catch (\Throwable $th) {
+    //         return response()->json([
+    //             'status' => self::$status['BAD_REQUEST'],
+    //             'message' => 'Terjadi Kesalahan Saat Proses Data' . $th->getMessage(),
+    //             'datetime' => date('Y-m-d H:i:s')
+    //         ], 400);
+    //     }
+    // }
+
     public function delete(Request $request)
     {
-        try {
-            $vaData = DB::table('reservasi')->where('kode_reservasi', $request->kode)->delete();
-            $vaData = DB::table('detail_reservasi')->where('kode_reservasi', $request->kode)->delete();
+        DB::beginTransaction();
 
-            if ($vaData === 0) {
+        try {
+            $reservasi = DB::table('reservasi')->where('kode_reservasi', $request->kode)->first();
+
+            if (!$reservasi) {
                 return response()->json([
                     'status' => self::$status['GAGAL'],
-                    'message' => 'Gagal Hapus Data',
-                    'datetime' => date('Y-m-d H:i:s')
+                    'message' => 'Data Tidak Ditemukan',
+                    'datetime' => now()
                 ], 400);
             }
+
+            $detailReservasi = DB::table('detail_reservasi')
+                ->where('kode_reservasi', $request->kode)
+                ->get();
+
+            if ($detailReservasi->isEmpty()) {
+                return response()->json([
+                    'status' => self::$status['GAGAL'],
+                    'message' => 'Tidak Ada Detail Reservasi',
+                    'datetime' => now()
+                ], 400);
+            }
+
+            DB::table('reservasi_del_log')->insert(array_merge((array) $reservasi, [
+                'deleted_at' => now()
+            ]));
+
+            DB::table('detail_reservasi_del_log')->insert(
+                $detailReservasi->map(fn($item) => array_merge((array)$item, [
+                    'deleted_at' => now()
+                ]))->toArray()
+            );
+
+
+            DB::table('detail_reservasi')->where('kode_reservasi', $request->kode)->delete();
+            DB::table('reservasi')->where('kode_reservasi', $request->kode)->delete();
+
+            DB::commit();
 
             return response()->json([
                 'status' => self::$status['SUKSES'],
                 'message' => 'Berhasil Hapus Data',
-                'datetime' => date('Y-m-d H:i:s')
+                'datetime' => now()
             ], 200);
         } catch (\Throwable $th) {
+            DB::rollBack();
             return response()->json([
                 'status' => self::$status['BAD_REQUEST'],
-                'message' => 'Terjadi Kesalahan Saat Proses Data' . $th->getMessage(),
-                'datetime' => date('Y-m-d H:i:s')
+                'message' => 'Terjadi Kesalahan Saat Proses Data: ' . $th->getMessage(),
+                'datetime' => now()
             ], 400);
         }
     }
