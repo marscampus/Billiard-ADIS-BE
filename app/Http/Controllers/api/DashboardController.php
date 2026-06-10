@@ -106,7 +106,255 @@ class DashboardController extends Controller
                         ->select('d.tgl_checkin as cek_in', 'd.tgl_checkout as cek_out', 'r.nama_tamu')
                         ->where('d.no_kamar', $room->kode_kamar)
                         ->where('r.status', '0')
+                        ->whereDate('d.tgl_checkin', $dKamarTgl) 
                         ->get();
+
+                    // Ambil data Invoice (Sedang Terpakai / Sudah ditransaksikan)
+                    $vaDetailInvoice = DB::table('detail_invoice as d')
+                        ->leftJoin('invoice as i', 'd.kode_invoice', 'i.kode_invoice')
+                        ->select('d.tgl_checkin as cek_in', 'd.tgl_checkout as cek_out', 'i.nama_tamu')
+                        ->where('d.no_kamar', $room->kode_kamar)
+                        ->whereDate('d.tgl_checkin', $dKamarTgl) 
+                        ->get();
+
+                    $vaTerpakaiTimeRanges = []; // Untuk kalkulasi bentrok jam
+                    $bookedTexts = []; // Teks untuk frontend (Terbooking)
+                    $usedTexts = [];   // Teks untuk frontend (Sedang Terpakai)
+
+                    // 1. Proses Data Terbooking
+                    foreach ($vaDetail as $d) {
+                        $in = Carbon::parse($d->cek_in)->format('H:i');
+                        $out = Carbon::parse($d->cek_out)->format('H:i');
+                        $nama = $d->nama_tamu;
+
+                        $vaTerpakaiTimeRanges[] = ['start' => $in, 'end' => $out];
+                        $bookedTexts[] = "$in - $out [ $nama ]"; // Tgl dihilangkan karena konteksnya sudah hari ini
+                    }
+
+                    // 2. Proses Data Terpakai (Invoice)
+                    foreach ($vaDetailInvoice as $d) {
+                        $in = Carbon::parse($d->cek_in)->format('H:i');
+                        $out = Carbon::parse($d->cek_out)->format('H:i');
+                        $nama = $d->nama_tamu;
+
+                        $vaTerpakaiTimeRanges[] = ['start' => $in, 'end' => $out];
+                        $usedTexts[] = "$in - $out [ $nama ]";
+                    }
+
+                    // FILTER dari $allHours yg tidak bentrok (Logika Anda sudah bagus)
+                    $availableHours = array_filter($allHours, function ($jam) use ($vaTerpakaiTimeRanges) {
+                        $slotStart = Carbon::createFromFormat('H:i', $jam);
+                        $slotEnd = $slotStart->copy()->addHour();
+
+                        foreach ($vaTerpakaiTimeRanges as $range) {
+                            $bookingStart = Carbon::createFromFormat('H:i', $range['start']);
+                            $bookingEnd = Carbon::createFromFormat('H:i', $range['end']);
+
+                            // Logika overlap: Jika SlotStart < BookingEnd DAN SlotEnd > BookingStart
+                            if ($slotStart->lt($bookingEnd) && $slotEnd->gt($bookingStart)) {
+                                return false;
+                            }
+                        }
+                        return true;
+                    });
+
+                    $ranges = [];
+                    $closeHour = end($allHours);
+                    foreach ($availableHours as $jam) {
+                        $start = Carbon::createFromFormat('H:i', $jam);
+                        if ($jam == $closeHour)
+                            break;
+                        $end = $start->copy()->addHour();
+                        $ranges[] = $start->format('H:i') . '-' . $end->format('H:i');
+                    }
+
+                    $vaKamar = [
+                        'no_kamar' => $room->no_kamar,
+                        'kode_kamar' => $room->kode_kamar,
+                        'status_kamar' => $room->status_kamar,
+                        'harga_kamar' => $room->harga_kamar,
+                        'fasilitas' => $fasilitas,
+                        'per_harga' => $room->per_harga,
+                        'terbooking' => $bookedTexts,  // Pisahkan array untuk FE
+                        'terpakai' => $usedTexts,    // Pisahkan array untuk FE
+                        'unused' => $ranges
+                    ];
+
+
+                    if (!$request->dashboard) {
+
+                        if (!empty($room->foto_kamar)) {
+                            $fileKey = 'images/meja/' . $room->foto_kamar;
+                            $foto_kamar = Storage::disk('minio')->get($fileKey);
+                            $base64 = base64_encode($foto_kamar);
+                            $room->foto_kamar = 'data:image/jpeg;base64,' . $base64;
+                        } else {
+                            $room->foto_kamar = null;
+                        }
+
+                        $vaKamar['foto_kamar'] = $room->foto_kamar;
+                    }
+
+                    return $vaKamar;
+                });
+
+                $result[] = [
+                    'tipe_kamar' => $tipeKamar,
+                    'tersedia' => $tersedia,
+                    'kamar' => $kamar,
+                ];
+            }
+
+            $vaPembayaran = DB::table('pembayaran')->select('kode as value', 'keterangan as label')->get();
+
+
+            $now = Carbon::now();
+
+            $vaReservasi1 = DB::table('detail_reservasi as d')
+                ->leftJoin('reservasi as r', 'd.kode_reservasi', 'r.kode_reservasi')
+                ->leftJoin('kamar as k', 'd.no_kamar', 'k.kode_kamar')
+                ->select(
+                    'r.nama_tamu as nama',
+                    'd.tgl_checkin as cek_in',
+                    'd.tgl_checkout as cek_out',
+                    'k.no_kamar as meja'
+                )
+                // ->where('r.tgl', $dKamarTgl)
+                ->where('r.status', '0');
+
+            $vaReservasi2 = DB::table('detail_invoice as d')
+                ->leftJoin('invoice as i', 'd.kode_invoice', 'i.kode_invoice')
+                ->leftJoin('kamar as k', 'd.no_kamar', 'k.kode_kamar')
+                ->select(
+                    'i.nama_tamu as nama',
+                    'd.tgl_checkin as cek_in',
+                    'd.tgl_checkout as cek_out',
+                    'k.no_kamar as meja'
+                )
+                ->where('i.tgl', date('Y-m-d'));
+
+            $vaReservasi = $vaReservasi1
+                ->union($vaReservasi2)
+                ->get();
+
+
+            $vaJam = DB::table('jammain')->get();
+
+
+            return response()->json([
+                'status' => self::$status['SUKSES'],
+                'message' => 'SUKSES',
+                'data' => $result,
+                'dataReservasi' => $vaReservasi,
+                'dataPembayaran' => $vaPembayaran,
+                'jam' => $vaJam,
+                'ppn' => isset($config['data']) ? $config['data']['ppn'] : 0,
+                'datetime' => date('Y-m-d H:i:s'),
+            ], 200);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'status' => self::$status['GAGAL'],
+                'message' => 'Terjadi Kesalahan Saat Proses Data' . $th->getMessage() . $th->getLine(),
+                'datetime' => date('Y-m-d H:i:s'),
+            ], 500);
+        }
+    }
+    public function data1(Request $request)
+    {
+        try {
+            // Ambil data kamar
+            $vaData = DB::table('kamar as k')
+                ->select(
+                    't.keterangan as tipe_kamar',
+                    'k.no_kamar',
+                    'k.kode_kamar',
+                    'k.status as status_kamar',
+                    'k.foto as foto_kamar',
+                    'k.harga as harga_kamar',
+                    'k.fasilitas',
+                    'k.per_harga'
+                )
+                ->leftJoin('tipe_kamar as t', 't.kode', '=', 'k.tipe_kamar')
+                ->get()
+                ->groupBy('tipe_kamar');
+
+            // Struktur data akhir
+            $result = [];
+
+            $data = [
+                'kode' => ['ppn'],
+            ];
+
+
+            $request = new Request($data);
+
+            $configController = new ConfigController();
+            $response = $configController->data($request);
+
+            $config = json_decode($response->getContent(), true);
+
+            // dd($data);
+            foreach ($vaData as $tipeKamar => $rooms) {
+                // Hitung jumlah kamar tersedia berdasarkan status == 0
+                $tersedia = $rooms->where('status_kamar', 0)->count();
+
+
+
+
+                // Map setiap kamar
+                $kamar = $rooms->map(function ($room) use ($request) {
+                    // Pecah string fasilitas menjadi array
+                    $fasilitasKode = explode('|', $room->fasilitas);
+
+                    // Ambil data fasilitas berdasarkan kode
+                    $fasilitas = DB::table('fasilitas_kamar')
+                        ->whereIn('kode', $fasilitasKode)
+                        ->get()
+                        ->map(function ($fasilitasItem) {
+                            return [
+                                'nama' => $fasilitasItem->keterangan
+                            ];
+                        });
+
+
+                    $oKamarNow = [];
+                    $dKamarTgl = Carbon::now()->format('Y-m-d');
+
+
+                    // if ($request->tanggalKamar && count($request->tanggalKamar) > 0) {
+                    //     $oKamarNow = collect($request->tanggalKamar)->first(function ($item) use ($room) {
+                    //         return $item['kode_kamar'] == $room->kode_kamar;
+                    //     });
+                    //     if ($oKamarNow) {
+                    //         $dKamarTgl = Carbon::parse($oKamarNow['tanggal'])->format('Y-m-d');
+                    //     }
+                    // }
+
+
+                    $nowHour = Carbon::now()->format('H:i');
+
+                    // Ambil semua jam yang lebih besar dari jam sekarang
+                    $allHours = DB::table('jammain')
+                        ->pluck('jam')
+                        ->filter(function ($v) use ($dKamarTgl, $nowHour) {
+                            if ($dKamarTgl != Carbon::now()->format('Y-m-d')) {
+                                return true;
+                            } else {
+                                return intval(substr($v, 0, 2)) > intval(substr($nowHour, 0, 2));
+                            }
+                        })
+                        ->values()
+                        ->toArray();
+
+
+                    // Ambil jam yang sudah terpakai
+                    $vaDetail = DB::table('detail_reservasi as d')
+                        ->leftJoin('reservasi as r', 'd.kode_reservasi', 'r.kode_reservasi')
+                        ->select('d.tgl_checkin as cek_in', 'd.tgl_checkout as cek_out', 'r.nama_tamu')
+                        ->where('d.no_kamar', $room->kode_kamar)
+                        ->where('r.status', '0')
+                        ->get();
+
 
                     $vaDetailInvoice = DB::table('detail_invoice as d')
                         ->leftJoin('invoice as i', 'd.kode_invoice', 'i.kode_invoice')
@@ -115,7 +363,6 @@ class DashboardController extends Controller
                         ->where('d.no_kamar', $room->kode_kamar)
                         ->where('i.tgl', $dKamarTgl)
                         ->get();
-
 
                     $vaTerpakai = [];
                     $vaTerpakaiText = [];
@@ -129,7 +376,7 @@ class DashboardController extends Controller
                         if ($tgl == $dKamarTgl) {
                             $vaTerpakai[] = [
                                 'start' => $in,
-                                'end'   => $out,
+                                'end' => $out,
                             ];
                         }
 
@@ -145,7 +392,7 @@ class DashboardController extends Controller
                         if ($tgl == $dKamarTgl) {
                             $vaTerpakai[] = [
                                 'start' => $in,
-                                'end'   => $out,
+                                'end' => $out,
                             ];
                         }
 
@@ -165,12 +412,12 @@ class DashboardController extends Controller
                         // }
 
                         $slotStart = Carbon::createFromFormat('H:i', $jam);
-                        $slotEnd   = $slotStart->copy()->addHour();
+                        $slotEnd = $slotStart->copy()->addHour();
 
                         foreach ($vaTerpakai as $range) {
 
                             $bookingStart = Carbon::createFromFormat('H:i', $range['start']);
-                            $bookingEnd   = Carbon::createFromFormat('H:i', $range['end']);
+                            $bookingEnd = Carbon::createFromFormat('H:i', $range['end']);
 
                             if (
                                 $slotStart->lt($bookingEnd) &&
@@ -193,7 +440,7 @@ class DashboardController extends Controller
                             break;
                         }
 
-                        $end   = $start->copy()->addHour();
+                        $end = $start->copy()->addHour();
 
                         $ranges[] = $start->format('H:i') . '-' . $end->format('H:i');
                     }
@@ -203,12 +450,12 @@ class DashboardController extends Controller
                     $availableHours = array_values($availableHours);
 
                     $vaKamar = [
-                        'no_kamar'      => $room->no_kamar,
-                        'kode_kamar'    => $room->kode_kamar,
-                        'status_kamar'  => $room->status_kamar,
-                        'harga_kamar'   => $room->harga_kamar,
-                        'fasilitas'     => $fasilitas,
-                        'per_harga'     => $room->per_harga,
+                        'no_kamar' => $room->no_kamar,
+                        'kode_kamar' => $room->kode_kamar,
+                        'status_kamar' => $room->status_kamar,
+                        'harga_kamar' => $room->harga_kamar,
+                        'fasilitas' => $fasilitas,
+                        'per_harga' => $room->per_harga,
                         'used' => $vaTerpakaiText,
                         'unused' => $ranges
                     ];

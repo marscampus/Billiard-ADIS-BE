@@ -24,7 +24,8 @@ class InvoiceController extends Controller
                 'no_telepon' => 'required|max:20',
                 'nik' => 'required|max:16',
                 'total_harga' => 'required',
-                'sesi_jual' => 'required'
+                'sesi_jual' => 'required',
+                'metode_pembayaran' => 'required',
             ], [
                 'required' => 'Kolom :attribute harus diisi.',
                 'max' => 'Kolom :attribute tidak boleh lebih dari :max karakter.',
@@ -44,7 +45,7 @@ class InvoiceController extends Controller
                 ->where('Kode', $request->nik)
                 ->first();
 
-            if (!$oAnggota &&  $request->metode_pembayaran == 'Potong Gaji') {
+            if (!$oAnggota && $request->metode_pembayaran == 'Potong Gaji') {
                 return response()->json([
                     'status' => self::$status['BAD_REQUEST'],
                     'message' => "Anggota tidak ditemukan silahkan gunakan kode anggota yang valid",
@@ -77,7 +78,7 @@ class InvoiceController extends Controller
 
 
             foreach ($request->kamar as $item) {
-                $dTglIn  = Carbon::parse($item['cek_in']);
+                $dTglIn = Carbon::parse($item['cek_in']);
                 $dTglOut = Carbon::parse($item['cek_out']);
 
                 $bentrok = DB::table('detail_invoice')
@@ -105,7 +106,7 @@ class InvoiceController extends Controller
 
 
 
-            $vaInsert =  DB::table('detail_invoice')->insert($vaArray);
+            $vaInsert = DB::table('detail_invoice')->insert($vaArray);
 
             if (!$vaInsert) {
                 throw new \Exception("Gagal create data, silahkan coba lagi.");
@@ -174,6 +175,7 @@ class InvoiceController extends Controller
                 'datetime' => date('Y-m-d H:i:s')
             ], 400);
         } catch (\Throwable $th) {
+            dd($th->getMessage());
 
             DB::rollBack();
 
@@ -456,7 +458,7 @@ class InvoiceController extends Controller
             // Query untuk mendapatkan detail kamar terkait dengan invoice ini
             $vaData2 = DB::table('detail_invoice as d')
                 ->leftJoin('kamar as k', 'd.no_kamar', 'k.kode_kamar')
-                ->select('k.no_kamar', 'k.kode_kamar',  'd.harga_kamar', 'd.tgl_checkin', 'd.tgl_checkout', 'k.status as status_kamar', 'k.per_harga')
+                ->select('k.no_kamar', 'k.kode_kamar', 'd.harga_kamar', 'd.tgl_checkin', 'd.tgl_checkout', 'k.status as status_kamar', 'k.per_harga')
                 ->where('d.kode_invoice', $invoice->kode_invoice)
                 ->get();
 
@@ -633,7 +635,7 @@ class InvoiceController extends Controller
             ]));
 
             DB::table('detail_invoice_del_log')->insert(
-                $detailInvoice->map(fn($item) => array_merge((array)$item, [
+                $detailInvoice->map(fn($item) => array_merge((array) $item, [
                     'deleted_at' => now()
                 ]))->toArray()
             );
