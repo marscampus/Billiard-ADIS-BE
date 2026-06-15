@@ -106,7 +106,7 @@ class DashboardController extends Controller
                         ->select('d.tgl_checkin as cek_in', 'd.tgl_checkout as cek_out', 'r.nama_tamu')
                         ->where('d.no_kamar', $room->kode_kamar)
                         ->where('r.status', '0')
-                        ->whereDate('d.tgl_checkin', $dKamarTgl) 
+                        ->whereDate('d.tgl_checkin', $dKamarTgl)
                         ->get();
 
                     // Ambil data Invoice (Sedang Terpakai / Sudah ditransaksikan)
@@ -114,7 +114,7 @@ class DashboardController extends Controller
                         ->leftJoin('invoice as i', 'd.kode_invoice', 'i.kode_invoice')
                         ->select('d.tgl_checkin as cek_in', 'd.tgl_checkout as cek_out', 'i.nama_tamu')
                         ->where('d.no_kamar', $room->kode_kamar)
-                        ->whereDate('d.tgl_checkin', $dKamarTgl) 
+                        ->whereDate('d.tgl_checkin', $dKamarTgl)
                         ->get();
 
                     $vaTerpakaiTimeRanges = []; // Untuk kalkulasi bentrok jam
@@ -208,9 +208,9 @@ class DashboardController extends Controller
             $vaPembayaran = DB::table('pembayaran')->select('kode as value', 'keterangan as label')->get();
 
 
-            $now = Carbon::now();
+            $todayDate = Carbon::today()->toDateString();
 
-            $vaReservasi1 = DB::table('detail_reservasi as d')
+            $vaTerbooking = DB::table('detail_reservasi as d')
                 ->leftJoin('reservasi as r', 'd.kode_reservasi', 'r.kode_reservasi')
                 ->leftJoin('kamar as k', 'd.no_kamar', 'k.kode_kamar')
                 ->select(
@@ -219,10 +219,11 @@ class DashboardController extends Controller
                     'd.tgl_checkout as cek_out',
                     'k.no_kamar as meja'
                 )
-                // ->where('r.tgl', $dKamarTgl)
-                ->where('r.status', '0');
+                ->whereDate('d.tgl_checkin', $todayDate)
+                ->where('r.status', '0')
+                ->get();
 
-            $vaReservasi2 = DB::table('detail_invoice as d')
+            $vaTerpakai = DB::table('detail_invoice as d')
                 ->leftJoin('invoice as i', 'd.kode_invoice', 'i.kode_invoice')
                 ->leftJoin('kamar as k', 'd.no_kamar', 'k.kode_kamar')
                 ->select(
@@ -231,10 +232,7 @@ class DashboardController extends Controller
                     'd.tgl_checkout as cek_out',
                     'k.no_kamar as meja'
                 )
-                ->where('i.tgl', date('Y-m-d'));
-
-            $vaReservasi = $vaReservasi1
-                ->union($vaReservasi2)
+                ->whereDate('d.tgl_checkin', $todayDate)
                 ->get();
 
 
@@ -245,7 +243,10 @@ class DashboardController extends Controller
                 'status' => self::$status['SUKSES'],
                 'message' => 'SUKSES',
                 'data' => $result,
-                'dataReservasi' => $vaReservasi,
+                'dataReservasi' => [
+                    'terpakai' => $vaTerpakai,
+                    'terbooking' => $vaTerbooking,
+                ],
                 'dataPembayaran' => $vaPembayaran,
                 'jam' => $vaJam,
                 'ppn' => isset($config['data']) ? $config['data']['ppn'] : 0,
